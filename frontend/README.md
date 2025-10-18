@@ -1,6 +1,6 @@
-# DeFi A2A Frontend
+# AlphaFlow Frontend
 
-Frontend application for the DeFi A2A Liquidity Unifier, built with React, Vite, Tailwind CSS v4, and RainbowKit.
+Frontend application for AlphaFlow — an autonomous multi-chain DeFi agent that combines Avail Nexus (unified liquidity), ASI agents (strategy reasoning), and Lit Protocol Vincent (trustless execution). Built with React, Vite, Tailwind CSS v4, and RainbowKit.
 
 ## 🚀 Tech Stack
 
@@ -60,14 +60,9 @@ Example usage:
 </div>
 ```
 
-## 🔗 Hedera Integration
+## 🔗 Multi-Chain Integration
 
-The app is configured to connect to Hedera networks:
-
-- **Testnet**: Chain ID 296
-- **Mainnet**: Chain ID 295
-
-RPC endpoints are configured in `src/config/chains.ts`.
+The app is designed to integrate with multiple chains via the Avail Nexus SDK. Chain configs and RPC endpoints are in `src/config/chains.ts`.
 
 ## 📦 Build
 

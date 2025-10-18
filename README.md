@@ -85,8 +85,42 @@
 | ---------------------------- | ----------------------------------------------------------------------------- |
 | **A2A Coordinator**          | A Python/TypeScript service managing AI-to-AI communication and task routing. |
 | **Strategy Engine**          | LLM-based simulation engine generating rebalancing and arbitrage strategies.  |
+| **Vincent Ability Wrapper**  | Backend API service that invokes LIT Protocol Vincent abilities with PKP signing. |
 | **Avail Adapter**            | Handles proof generation and batch submission to Avail.                       |
 | **Blockscout API Connector** | Fetches contract and transaction metadata for analytics and visualization.    |
+
+---
+
+## 🔮 Vincent Integration (LIT Protocol)
+
+**NeuraFlow** uses [Vincent](https://docs.heyvincent.ai/) - LIT Protocol's programmable key pair (PKP) system - to enable **autonomous AI agent execution** with cryptographic guarantees.
+
+### Key Benefits
+- **Trustless Execution**: AI agents sign transactions via decentralized PKPs (no single private key)
+- **Policy Constraints**: User-defined rules enforce what abilities can/cannot do
+- **Cross-Chain**: Single PKP controls addresses on multiple EVM chains
+- **Audit Trail**: All ability invocations logged on-chain via LIT Protocol
+
+### ArbitrageExecutor Ability
+Our flagship Vincent ability executes cross-chain arbitrage atomically:
+
+```typescript
+// AI Agent detects opportunity → calls backend API
+POST /api/abilities/arbitrage
+{
+  "sourceChain": "hedera",
+  "targetChain": "ethereum",
+  "minProfitBps": 50,
+  // ... params
+}
+
+// Backend invokes Vincent ability via LIT SDK
+// → Ability runs in sandboxed Lit Action VM
+// → PKP signs transactions on both chains
+// → Returns execution result
+```
+
+See [Vincent Integration Plan](./docs/VINCENT_INTEGRATION_PLAN.md) for architecture details.
 
 ---
 
