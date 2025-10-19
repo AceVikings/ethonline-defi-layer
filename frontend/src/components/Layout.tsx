@@ -11,6 +11,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useState } from 'react';
+import { useNetwork } from '../contexts/NetworkContext';
 
 interface LayoutProps {
   children: ReactNode;
@@ -40,6 +41,7 @@ const navigationItems = [
 export function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const { networkMode, setNetworkMode, isMainnet } = useNetwork();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-deep-navy via-deep-space to-deep-navy">
@@ -82,16 +84,42 @@ export function Layout({ children }: LayoutProps) {
             </div>
           </div>
 
-          {/* Right side - just wallet */}
+          {/* Right side - Network toggle + wallet */}
           <div className="flex items-center gap-4">
+            {/* Network Mode Toggle */}
+            <div className="hidden md:flex items-center gap-2 p-1 rounded-xl bg-dark-charcoal/50 border border-soft-gray/20">
+              <button
+                onClick={() => setNetworkMode("testnet")}
+                className={`px-3 py-1.5 rounded-lg transition-all duration-300 flex items-center gap-2 ${
+                  networkMode === "testnet"
+                    ? "bg-neon-violet text-off-white"
+                    : "text-soft-gray hover:text-off-white"
+                }`}
+              >
+                <Network className="h-3.5 w-3.5" />
+                <span className="text-xs font-medium">Testnet</span>
+              </button>
+              <button
+                onClick={() => setNetworkMode("mainnet")}
+                className={`px-3 py-1.5 rounded-lg transition-all duration-300 flex items-center gap-2 ${
+                  networkMode === "mainnet"
+                    ? "bg-aqua-blue text-off-white"
+                    : "text-soft-gray hover:text-off-white"
+                }`}
+              >
+                <Network className="h-3.5 w-3.5" />
+                <span className="text-xs font-medium">Mainnet</span>
+              </button>
+            </div>
+
             {/* Network Status - Desktop only */}
-            <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full glass-card">
+            <div className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-full glass-card">
               <div className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-aqua-blue opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-aqua-blue" />
               </div>
               <span className="text-sm text-off-white font-medium" style={{ fontFamily: 'Inter Tight, sans-serif' }}>
-                Network Live
+                {isMainnet ? "Mainnet" : "Testnet"} Live
               </span>
             </div>
             

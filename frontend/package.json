@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@avail-project/nexus-widgets": "^0.0.5",
+    "@bgd-labs/aave-address-book": "^4.34.0",
     "@rainbow-me/rainbowkit": "^2.2.8",
     "@tailwindcss/vite": "^4.1.14",
     "@tanstack/react-query": "^5.90.2",

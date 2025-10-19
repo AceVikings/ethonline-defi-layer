@@ -1,3 +1,8 @@
+// Aave V3 Configuration - Multi-Network Support
+// Using official @bgd-labs/aave-address-book for verified addresses
+
+import { POLYGON_V3_ADDRESSES, POLYGON_V3_ASSETS } from "./aaveAddressBook";
+
 // Aave V3 Sepolia Testnet Configuration
 export const AAVE_V3_SEPOLIA = {
   // Core Protocol Contracts
@@ -36,9 +41,56 @@ export const AAVE_V3_SEPOLIA = {
   // Chain ID
   CHAIN_ID: 11155111,
   CHAIN_NAME: "Sepolia",
+  EXPLORER: "https://sepolia.etherscan.io",
+  IS_TESTNET: true,
 } as const;
 
-// Aave Pool ABI - Supply function
+// Aave V3 Polygon Mainnet Configuration
+// Using official Aave Address Book for verified contract addresses
+export const AAVE_V3_POLYGON = {
+  // Core Protocol Contracts (from @bgd-labs/aave-address-book)
+  POOL: POLYGON_V3_ADDRESSES.POOL,
+  POOL_DATA_PROVIDER: POLYGON_V3_ADDRESSES.POOL_DATA_PROVIDER,
+  POOL_ADDRESSES_PROVIDER: POLYGON_V3_ADDRESSES.POOL_ADDRESSES_PROVIDER,
+  POOL_CONFIGURATOR: POLYGON_V3_ADDRESSES.POOL_CONFIGURATOR,
+  ORACLE: POLYGON_V3_ADDRESSES.ORACLE,
+  
+  // Additional Protocol Contracts
+  UI_POOL_DATA_PROVIDER: POLYGON_V3_ADDRESSES.UI_POOL_DATA_PROVIDER,
+  UI_INCENTIVE_DATA_PROVIDER: POLYGON_V3_ADDRESSES.UI_INCENTIVE_DATA_PROVIDER,
+  ACL_MANAGER: POLYGON_V3_ADDRESSES.ACL_MANAGER,
+  ACL_ADMIN: POLYGON_V3_ADDRESSES.ACL_ADMIN,
+  WALLET_BALANCE_PROVIDER: POLYGON_V3_ADDRESSES.WALLET_BALANCE_PROVIDER,
+  WRAPPED_TOKEN_GATEWAY: POLYGON_V3_ADDRESSES.WRAPPED_TOKEN_GATEWAY,
+  TREASURY_COLLECTOR: POLYGON_V3_ADDRESSES.TREASURY_COLLECTOR,
+  INCENTIVES_CONTROLLER: POLYGON_V3_ADDRESSES.INCENTIVES_CONTROLLER,
+  EMISSION_MANAGER: POLYGON_V3_ADDRESSES.EMISSION_MANAGER,
+  REGISTRY: POLYGON_V3_ADDRESSES.REGISTRY,
+  REPAY_WITH_COLLATERAL: POLYGON_V3_ADDRESSES.REPAY_WITH_COLLATERAL,
+  COLLATERAL_SWITCH: POLYGON_V3_ADDRESSES.COLLATERAL_SWITCH,
+  DEBT_SWITCH: POLYGON_V3_ADDRESSES.DEBT_SWITCH,
+  WITHDRAW_SWITCH: POLYGON_V3_ADDRESSES.WITHDRAW_SWITCH,
+  RISK_STEWARD: POLYGON_V3_ADDRESSES.RISK_STEWARD,
+  
+  // Supported Assets on Polygon (from Address Book)
+  ASSETS: POLYGON_V3_ASSETS,
+  
+  // Chain ID
+  CHAIN_ID: POLYGON_V3_ADDRESSES.CHAIN_ID,
+  CHAIN_NAME: POLYGON_V3_ADDRESSES.CHAIN_NAME,
+  EXPLORER: POLYGON_V3_ADDRESSES.EXPLORER,
+  IS_TESTNET: POLYGON_V3_ADDRESSES.IS_TESTNET,
+} as const;
+
+// Network Mode Type
+export type NetworkMode = "testnet" | "mainnet";
+
+// Get active Aave config based on mode
+export const getAaveConfig = (mode: NetworkMode) => {
+  return mode === "mainnet" ? AAVE_V3_POLYGON : AAVE_V3_SEPOLIA;
+};
+
+// Aave Pool ABI - Supply functions
 export const AAVE_POOL_ABI = [
   {
     inputs: [
@@ -56,6 +108,22 @@ export const AAVE_POOL_ABI = [
     inputs: [
       { internalType: "address", name: "asset", type: "address" },
       { internalType: "uint256", name: "amount", type: "uint256" },
+      { internalType: "address", name: "onBehalfOf", type: "address" },
+      { internalType: "uint16", name: "referralCode", type: "uint16" },
+      { internalType: "uint256", name: "deadline", type: "uint256" },
+      { internalType: "uint8", name: "permitV", type: "uint8" },
+      { internalType: "bytes32", name: "permitR", type: "bytes32" },
+      { internalType: "bytes32", name: "permitS", type: "bytes32" },
+    ],
+    name: "supplyWithPermit",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "asset", type: "address" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
       { internalType: "address", name: "to", type: "address" },
     ],
     name: "withdraw",
@@ -65,7 +133,7 @@ export const AAVE_POOL_ABI = [
   },
 ] as const;
 
-// ERC20 Token ABI - For approval
+// ERC20 Token ABI - For approval and permit
 export const ERC20_ABI = [
   {
     inputs: [
@@ -94,24 +162,52 @@ export const ERC20_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [{ internalType: "address", name: "owner", type: "address" }],
+    name: "nonces",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "DOMAIN_SEPARATOR",
+    outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
 
-// Helper function to get token address on Sepolia
-export function getAaveAssetAddress(symbol: "USDC" | "USDT" | "DAI" | "WETH") {
-  return AAVE_V3_SEPOLIA.ASSETS[symbol].address as `0x${string}`;
+// Helper function to get token address based on network mode
+export function getAaveAssetAddress(
+  symbol: "USDC" | "USDT" | "DAI" | "WETH" | "WMATIC",
+  mode: NetworkMode = "testnet"
+) {
+  const config = getAaveConfig(mode);
+  return (config.ASSETS as any)[symbol]?.address as `0x${string}` | undefined;
 }
 
 // Helper function to get aToken address
-export function getATokenAddress(symbol: "USDC" | "USDT" | "DAI" | "WETH") {
-  return AAVE_V3_SEPOLIA.ASSETS[symbol].aToken as `0x${string}`;
+export function getATokenAddress(
+  symbol: "USDC" | "USDT" | "DAI" | "WETH" | "WMATIC",
+  mode: NetworkMode = "testnet"
+) {
+  const config = getAaveConfig(mode);
+  return (config.ASSETS as any)[symbol]?.aToken as `0x${string}` | undefined;
 }
 
-// Helper to check if token is supported
-export function isSupportedAaveAsset(symbol: string): symbol is "USDC" | "USDT" | "DAI" | "WETH" {
-  return symbol in AAVE_V3_SEPOLIA.ASSETS;
+// Helper to check if token is supported on network
+export function isSupportedAaveAsset(
+  symbol: string,
+  mode: NetworkMode = "testnet"
+): symbol is "USDC" | "USDT" | "DAI" | "WETH" | "WMATIC" {
+  const config = getAaveConfig(mode);
+  return symbol in config.ASSETS;
 }
 
-// Get all supported token symbols
-export function getSupportedAaveTokens() {
-  return Object.keys(AAVE_V3_SEPOLIA.ASSETS) as Array<"USDC" | "USDT" | "DAI" | "WETH">;
+// Get all supported token symbols for network
+export function getSupportedAaveTokens(mode: NetworkMode = "testnet") {
+  const config = getAaveConfig(mode);
+  return Object.keys(config.ASSETS) as Array<"USDC" | "USDT" | "DAI" | "WETH" | "WMATIC">;
 }
+
