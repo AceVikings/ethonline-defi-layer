@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { WagmiProvider, useAccount } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { NexusProvider, useNexus } from "@avail-project/nexus-widgets";
+import { AaveProvider, production, AaveClient } from "@aave/react";
 import { config } from "./config/wagmi";
 import { sepolia, polygon } from "wagmi/chains";
 import { NetworkProvider, useNetwork } from "./contexts/NetworkContext";
@@ -63,7 +64,7 @@ function WalletBridge() {
                   });
                 }, 100);
               } catch (err) {
-                console.error("Error initializing SDK:", err);
+                console.warn("Nexus SDK initialization warning (may be expected on some networks):", err);
                 hasInitializedRef.current = false; // Reset on error so we can retry
               }
             }
@@ -86,28 +87,39 @@ function WalletBridge() {
 function InnerProviders({ children }: { children: React.ReactNode }) {
   const { networkMode, isMainnet } = useNetwork();
 
+  // Create Aave client with production environment
+  const aaveClient = useMemo(() => {
+    return AaveClient.create({
+      environment: production,
+    });
+  }, []);
+
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider
-          theme={darkTheme({
-            accentColor: isMainnet ? "#0ea5e9" : "#7c3aed",
-            accentColorForeground: "white",
-            borderRadius: "medium",
-            fontStack: "system",
-          })}
-          initialChain={isMainnet ? polygon : sepolia}
-        >
-          <NexusProvider
-            config={{
-              debug: true,
-              network: networkMode, // "testnet" or "mainnet"
-            }}
+        <AaveProvider client={aaveClient}>
+          <RainbowKitProvider
+            theme={darkTheme({
+              accentColor: isMainnet ? "#0ea5e9" : "#7c3aed",
+              accentColorForeground: "white",
+              borderRadius: "medium",
+              fontStack: "system",
+            })}
+            initialChain={isMainnet ? polygon : sepolia}
           >
-            <WalletBridge />
-            {children}
-          </NexusProvider>
-        </RainbowKitProvider>
+            {/* Key prop forces remount when network mode changes */}
+            <NexusProvider
+              key={networkMode}
+              config={{
+                debug: true,
+                network: networkMode, // "testnet" or "mainnet"
+              }}
+            >
+              <WalletBridge />
+              {children}
+            </NexusProvider>
+          </RainbowKitProvider>
+        </AaveProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

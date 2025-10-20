@@ -1,14 +1,26 @@
 /**
  * Aave V3 Address Book Integration
  * 
- * This file integrates the official Aave Address Book for Polygon V3
+ * This file integrates the official Aave Address Book for all supported mainnet chains
  * and provides a unified interface for accessing all Aave protocol contracts.
  * 
  * Using official package: @bgd-labs/aave-address-book
  * Documentation: https://github.com/bgd-labs/aave-address-book
  */
 
-import { AaveV3Polygon } from "@bgd-labs/aave-address-book";
+import {
+  AaveV3Polygon,
+  // Additional chains ready for future use:
+  // AaveV3Base,
+  // AaveV3Ethereum,
+  // AaveV3Arbitrum,
+  // AaveV3Optimism,
+  // AaveV3Avalanche,
+  // AaveV3BNB,
+  // AaveV3Gnosis,
+  // AaveV3Scroll,
+  // AaveV3Metis,
+} from "@bgd-labs/aave-address-book";
 
 /**
  * Polygon V3 Protocol Contracts

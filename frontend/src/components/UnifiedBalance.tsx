@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAccount } from "wagmi";
 import { useNexus } from "@avail-project/nexus-widgets";
 import { Wallet, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import { useNetwork } from "../contexts/NetworkContext";
 
 interface TokenBalance {
   symbol: string;
@@ -54,6 +55,7 @@ const CHAIN_INFO: Record<number, { name: string; logo: string }> = {
 export function UnifiedBalance() {
   const { address, isConnected } = useAccount();
   const { sdk, isSdkInitialized } = useNexus();
+  const { networkMode } = useNetwork();
   const [balances, setBalances] = useState<TokenBalance[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -173,7 +175,7 @@ export function UnifiedBalance() {
 
   // Fetch balances when SDK is available - retry on SDK state updates
   useEffect(() => {
-    console.log("useEffect triggered:", { isConnected, address: !!address, sdk: !!sdk, isSdkInitialized, hasFetched: hasFetched.current, isLoading: isLoadingRef.current });
+    console.log("useEffect triggered:", { isConnected, address: !!address, sdk: !!sdk, isSdkInitialized, networkMode, hasFetched: hasFetched.current, isLoading: isLoadingRef.current });
     
     if (!isConnected || !address || !sdk) {
       hasFetched.current = false;
@@ -186,7 +188,16 @@ export function UnifiedBalance() {
       console.log("Attempting to fetch balances...");
       fetchBalances();
     }
-  }, [sdk, isConnected, address, isSdkInitialized, fetchBalances]);
+  }, [sdk, isConnected, address, isSdkInitialized, networkMode, fetchBalances]);
+
+  // Reset and refetch when network mode changes
+  useEffect(() => {
+    if (isConnected && address && sdk) {
+      console.log("Network mode changed to:", networkMode, "- refreshing balances");
+      hasFetched.current = false;
+      fetchBalances();
+    }
+  }, [networkMode, isConnected, address, sdk, fetchBalances]);
 
   const formatBalance = (balance: string, decimals: number): string => {
     const value = parseFloat(balance);

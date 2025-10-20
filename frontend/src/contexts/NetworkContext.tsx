@@ -24,7 +24,7 @@ interface NetworkProviderProps {
 }
 
 export function NetworkProvider({ children }: NetworkProviderProps) {
-  const [networkMode, setNetworkMode] = useState<NetworkMode>("testnet");
+  const [networkMode, setNetworkMode] = useState<NetworkMode>("mainnet");
 
   const value: NetworkContextType = {
     networkMode,
