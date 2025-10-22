@@ -9,6 +9,7 @@ import { useAaveMarket, chainId as aaveChainId, evmAddress } from "@aave/react";
 // Aave V3 Pool (Market) addresses - NOT Pool Addresses Provider
 const AAVE_POOL_ADDRESSES: Record<number, string> = {
   137: "0x794a61358D6845594F94dc1DB02A252b5b4814aD", // Polygon V3 Pool
+  8453: "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5", // Base V3 Pool
   1: "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2", // Ethereum V3 Pool
   11155111: "0x6Ae43d3271ff6888e7Fc43Fd7321a503ff738951", // Sepolia V3 Pool
 };

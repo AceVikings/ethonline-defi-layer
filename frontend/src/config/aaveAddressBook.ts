@@ -10,8 +10,8 @@
 
 import {
   AaveV3Polygon,
+  AaveV3Base,
   // Additional chains ready for future use:
-  // AaveV3Base,
   // AaveV3Ethereum,
   // AaveV3Arbitrum,
   // AaveV3Optimism,
@@ -277,6 +277,108 @@ export const getContractsByCategory = () => ({
 });
 
 /**
+ * Base V3 Protocol Contracts
+ * All addresses are verified and maintained by Aave Governance (BGD Labs)
+ */
+export const BASE_V3_CONTRACTS = {
+  // Core Protocol
+  Pool: AaveV3Base.POOL,
+  PoolAddressesProvider: AaveV3Base.POOL_ADDRESSES_PROVIDER,
+  PoolConfigurator: AaveV3Base.POOL_CONFIGURATOR,
+  
+  // Data Providers
+  AaveProtocolDataProvider: AaveV3Base.AAVE_PROTOCOL_DATA_PROVIDER,
+  UiPoolDataProvider: AaveV3Base.UI_POOL_DATA_PROVIDER,
+  UiIncentiveDataProvider: AaveV3Base.UI_INCENTIVE_DATA_PROVIDER,
+  
+  // Oracle
+  AaveOracle: AaveV3Base.ORACLE,
+  
+  // Access Control
+  ACLManager: AaveV3Base.ACL_MANAGER,
+  ACLAdmin: AaveV3Base.ACL_ADMIN,
+  
+  // Utilities
+  WalletBalanceProvider: AaveV3Base.WALLET_BALANCE_PROVIDER,
+  WrappedTokenGateway: AaveV3Base.WETH_GATEWAY,
+  
+  // Treasury & Incentives
+  TreasuryCollector: AaveV3Base.COLLECTOR,
+  DefaultIncentivesController: AaveV3Base.DEFAULT_INCENTIVES_CONTROLLER,
+  IncentivesEmissionManager: AaveV3Base.EMISSION_MANAGER,
+  
+  // Registry
+  PoolAddressesProviderRegistry: AaveV3Base.POOL_ADDRESSES_PROVIDER_REGISTRY,
+} as const;
+
+/**
+ * Full Base V3 Market Configuration
+ */
+export const BASE_V3_ADDRESSES = {
+  // Chain Info
+  CHAIN_ID: 8453,
+  CHAIN_NAME: "Base",
+  EXPLORER: "https://basescan.org",
+  IS_TESTNET: false,
+  
+  // Core Protocol (from Address Book)
+  POOL: BASE_V3_CONTRACTS.Pool,
+  POOL_ADDRESSES_PROVIDER: BASE_V3_CONTRACTS.PoolAddressesProvider,
+  POOL_CONFIGURATOR: BASE_V3_CONTRACTS.PoolConfigurator,
+  POOL_DATA_PROVIDER: BASE_V3_CONTRACTS.AaveProtocolDataProvider,
+  
+  // Data & UI
+  UI_POOL_DATA_PROVIDER: BASE_V3_CONTRACTS.UiPoolDataProvider,
+  UI_INCENTIVE_DATA_PROVIDER: BASE_V3_CONTRACTS.UiIncentiveDataProvider,
+  
+  // Oracle
+  ORACLE: BASE_V3_CONTRACTS.AaveOracle,
+  
+  // Access Control
+  ACL_MANAGER: BASE_V3_CONTRACTS.ACLManager,
+  ACL_ADMIN: BASE_V3_CONTRACTS.ACLAdmin,
+  
+  // Utilities
+  WALLET_BALANCE_PROVIDER: BASE_V3_CONTRACTS.WalletBalanceProvider,
+  WRAPPED_TOKEN_GATEWAY: BASE_V3_CONTRACTS.WrappedTokenGateway,
+  
+  // Treasury & Incentives
+  TREASURY_COLLECTOR: BASE_V3_CONTRACTS.TreasuryCollector,
+  INCENTIVES_CONTROLLER: BASE_V3_CONTRACTS.DefaultIncentivesController,
+  EMISSION_MANAGER: BASE_V3_CONTRACTS.IncentivesEmissionManager,
+  
+  // Registry
+  REGISTRY: BASE_V3_CONTRACTS.PoolAddressesProviderRegistry,
+} as const;
+
+/**
+ * Base V3 Assets Configuration
+ */
+export const BASE_V3_ASSETS = {
+  USDC: {
+    address: AaveV3Base.ASSETS.USDbC.UNDERLYING, // Bridged USDC on Base
+    aToken: AaveV3Base.ASSETS.USDbC.A_TOKEN,
+    variableDebtToken: AaveV3Base.ASSETS.USDbC.V_TOKEN,
+    decimals: 6,
+    symbol: "USDC" as const,
+  },
+  WETH: {
+    address: AaveV3Base.ASSETS.WETH.UNDERLYING,
+    aToken: AaveV3Base.ASSETS.WETH.A_TOKEN,
+    variableDebtToken: AaveV3Base.ASSETS.WETH.V_TOKEN,
+    decimals: 18,
+    symbol: "WETH" as const,
+  },
+  cbETH: {
+    address: AaveV3Base.ASSETS.cbETH.UNDERLYING,
+    aToken: AaveV3Base.ASSETS.cbETH.A_TOKEN,
+    variableDebtToken: AaveV3Base.ASSETS.cbETH.V_TOKEN,
+    decimals: 18,
+    symbol: "cbETH" as const,
+  },
+} as const;
+
+/**
  * Helper: Get asset by symbol
  */
 export const getAssetBySymbol = (symbol: keyof typeof POLYGON_V3_ASSETS) => {
@@ -293,4 +395,4 @@ export const getSupportedAssets = () => {
 /**
  * Export the complete Aave Address Book for advanced usage
  */
-export { AaveV3Polygon } from "@bgd-labs/aave-address-book";
+export { AaveV3Polygon, AaveV3Base } from "@bgd-labs/aave-address-book";

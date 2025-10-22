@@ -20,6 +20,7 @@ interface AaveTokenCardProps {
   tokenName?: string;
   tokenLogo?: string;
   networkMode: "testnet" | "mainnet";
+  targetChainId: number; // The chain ID where Aave pool is deployed
   chainIcon: string;
   chainName: string;
   chainColor: string;
@@ -39,6 +40,7 @@ export function AaveTokenCard({
   tokenName,
   tokenLogo,
   networkMode,
+  targetChainId,
   chainIcon,
   chainName,
   chainColor,
@@ -322,7 +324,7 @@ export function AaveTokenCard({
                   };
                 }}
                 prefill={{
-                  toChainId: AAVE_CONFIG.CHAIN_ID,
+                  toChainId: targetChainId as any, // Use the actual connected chain ID
                   token: token as SUPPORTED_TOKENS,
                   amount: amount,
                 }}

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { AavePage } from './pages/AavePage';
+import { CompoundPage } from './pages/CompoundPage';
 import { ProfilePage } from './pages/ProfilePage';
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/aave" element={<AavePage />} />
+          <Route path="/compound" element={<CompoundPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Routes>
       </Layout>

@@ -85,8 +85,8 @@ export function Dashboard() {
           </div>
           <div className="p-6 rounded-xl glass-card border border-magenta-haze/20">
             <div className="text-sm text-soft-gray mb-2">Active Protocols</div>
-            <div className="text-3xl font-bold text-magenta-haze">1</div>
-            <div className="text-xs text-soft-gray mt-1">Aave V3 Integrated</div>
+            <div className="text-3xl font-bold text-magenta-haze">2</div>
+            <div className="text-xs text-soft-gray mt-1">Aave V3 + Compound V3</div>
           </div>
         </div>
       </div>

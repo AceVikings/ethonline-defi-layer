@@ -1,19 +1,24 @@
-import { useAccount } from "wagmi";
+import { useAccount, useChainId } from "wagmi";
 import { TrendingUp, Info } from "lucide-react";
 import { useNetwork } from "../contexts/NetworkContext";
 import { useAaveMarketData } from "../hooks/useAaveMarketData";
 import { useAaveUserPosition } from "../hooks/useAaveUserPosition";
 import { useAaveUserSupplies } from "../hooks/useAaveUserSupplies";
 import { AaveTokenCard } from "./AaveTokenCard";
-import { getAaveConfig } from "../config/aave";
+import { getAaveConfigByChainId } from "../config/aave";
 
 const CHAIN_INFO = {
-  polygon: {
+  137: { // Polygon
     name: "Polygon",
     icon: "https://statics.aave.com/polygon.svg",
     color: "#8247E5",
   },
-  sepolia: {
+  8453: { // Base
+    name: "Base",
+    icon: "https://cryptologos.cc/logos/coinbase-coin-logo.svg",
+    color: "#0052FF",
+  },
+  11155111: { // Sepolia
     name: "Sepolia",
     icon: "https://cryptologos.cc/logos/ethereum-eth-logo.svg",
     color: "#627EEA",
@@ -27,7 +32,10 @@ interface AaveYieldProps {
 export function AaveYield({ className = "" }: AaveYieldProps) {
   const { networkMode } = useNetwork();
   const { address } = useAccount();
-  const AAVE_CONFIG = getAaveConfig(networkMode);
+  const chainId = useChainId();
+  
+  // Get Aave config based on connected chain
+  const AAVE_CONFIG = getAaveConfigByChainId(chainId);
 
   // Fetch real-time market data from Aave using official @aave/react SDK
   const {
@@ -53,9 +61,8 @@ export function AaveYield({ className = "" }: AaveYieldProps) {
     console.log("User Supplies (from useUserSupplies hook):", userSupplies);
   }
 
-  // Get chain info
-  const chainInfo =
-    networkMode === "mainnet" ? CHAIN_INFO.polygon : CHAIN_INFO.sepolia;
+  // Get chain info based on connected chain
+  const chainInfo = CHAIN_INFO[chainId as keyof typeof CHAIN_INFO] || CHAIN_INFO[137];
 
   // Get all available markets (all reserves that are active) sorted by APY (highest first)
   const availableMarkets = Object.values(reservesData)
@@ -78,23 +85,29 @@ export function AaveYield({ className = "" }: AaveYieldProps) {
     <div className={`space-y-6 ${className}`}>
       {/* Header */}
       <div className="p-6 rounded-2xl glass-card border-2 border-neon-violet/20">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-neon-violet/30 to-neon-violet/10 flex items-center justify-center">
-            <TrendingUp className="h-6 w-6 text-neon-violet" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-neon-violet/30 to-neon-violet/10 flex items-center justify-center">
+              <TrendingUp className="h-6 w-6 text-neon-violet" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-off-white">
+                Aave V3 Yield
+              </h3>
+              <p className="text-sm text-soft-gray">
+                Supply tokens to earn interest or withdraw your funds
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-xl font-bold text-off-white">
-              Aave V3 Yield on {chainInfo.name}
-            </h3>
-            <p className="text-sm text-soft-gray">
-              Supply tokens to earn interest or withdraw your funds
-            </p>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg glass-card border border-neon-violet/20">
+            <img src={chainInfo.icon} alt={chainInfo.name} className="w-5 h-5 object-contain" />
+            <span className="text-sm font-medium text-off-white">{chainInfo.name}</span>
           </div>
         </div>
       </div>
 
       {/* Info Banner */}
-      {networkMode === "testnet" ? (
+      {chainId === 11155111 ? (
         <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
           <div className="flex items-start gap-3">
             <Info className="h-5 w-5 text-yellow-500 mt-0.5 flex-shrink-0" />
@@ -115,10 +128,12 @@ export function AaveYield({ className = "" }: AaveYieldProps) {
           <div className="flex items-start gap-3">
             <Info className="h-5 w-5 text-aqua-blue mt-0.5 flex-shrink-0" />
             <div className="text-sm">
-              <p className="text-aqua-blue font-semibold mb-1">Mainnet Mode</p>
+              <p className="text-aqua-blue font-semibold mb-1">
+                {chainInfo.name} Network
+              </p>
               <p className="text-aqua-blue/80">
-                You're using Polygon mainnet. Real MATIC required for gas fees.
-                You can bridge from any chain using the buttons below.
+                You're connected to {chainInfo.name}. Real funds and gas fees apply.
+                {chainId === 137 && " You can bridge from any chain using the buttons below."}
               </p>
             </div>
           </div>
@@ -210,6 +225,7 @@ export function AaveYield({ className = "" }: AaveYieldProps) {
             tokenName={reserve.name}
             tokenLogo={reserve.tokenLogo}
             networkMode={networkMode}
+            targetChainId={chainId} // Pass the actual connected chain ID
             chainIcon={chainInfo.icon}
             chainName={chainInfo.name}
             chainColor={chainInfo.color}

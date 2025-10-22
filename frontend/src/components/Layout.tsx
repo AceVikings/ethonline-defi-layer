@@ -28,7 +28,13 @@ const navigationItems = [
     name: 'Aave Yield',
     path: '/aave',
     icon: TrendingUp,
-    description: 'Earn on Sepolia'
+    description: 'Earn on Aave V3'
+  },
+  {
+    name: 'Compound',
+    path: '/compound',
+    icon: TrendingUp,
+    description: 'Supply & Borrow'
   },
   {
     name: 'Profile',

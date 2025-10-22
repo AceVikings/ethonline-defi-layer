@@ -1,7 +1,12 @@
 // Aave V3 Configuration - Multi-Network Support
 // Using official @bgd-labs/aave-address-book for verified addresses
 
-import { POLYGON_V3_ADDRESSES, POLYGON_V3_ASSETS } from "./aaveAddressBook";
+import { 
+  POLYGON_V3_ADDRESSES, 
+  POLYGON_V3_ASSETS,
+  BASE_V3_ADDRESSES,
+  BASE_V3_ASSETS,
+} from "./aaveAddressBook";
 
 // Aave V3 Sepolia Testnet Configuration
 export const AAVE_V3_SEPOLIA = {
@@ -82,10 +87,56 @@ export const AAVE_V3_POLYGON = {
   IS_TESTNET: POLYGON_V3_ADDRESSES.IS_TESTNET,
 } as const;
 
+// Aave V3 Base Mainnet Configuration
+export const AAVE_V3_BASE = {
+  // Core Protocol Contracts (from @bgd-labs/aave-address-book)
+  POOL: BASE_V3_ADDRESSES.POOL,
+  POOL_DATA_PROVIDER: BASE_V3_ADDRESSES.POOL_DATA_PROVIDER,
+  POOL_ADDRESSES_PROVIDER: BASE_V3_ADDRESSES.POOL_ADDRESSES_PROVIDER,
+  POOL_CONFIGURATOR: BASE_V3_ADDRESSES.POOL_CONFIGURATOR,
+  ORACLE: BASE_V3_ADDRESSES.ORACLE,
+  
+  // Additional Protocol Contracts
+  UI_POOL_DATA_PROVIDER: BASE_V3_ADDRESSES.UI_POOL_DATA_PROVIDER,
+  UI_INCENTIVE_DATA_PROVIDER: BASE_V3_ADDRESSES.UI_INCENTIVE_DATA_PROVIDER,
+  ACL_MANAGER: BASE_V3_ADDRESSES.ACL_MANAGER,
+  ACL_ADMIN: BASE_V3_ADDRESSES.ACL_ADMIN,
+  WALLET_BALANCE_PROVIDER: BASE_V3_ADDRESSES.WALLET_BALANCE_PROVIDER,
+  WRAPPED_TOKEN_GATEWAY: BASE_V3_ADDRESSES.WRAPPED_TOKEN_GATEWAY,
+  TREASURY_COLLECTOR: BASE_V3_ADDRESSES.TREASURY_COLLECTOR,
+  INCENTIVES_CONTROLLER: BASE_V3_ADDRESSES.INCENTIVES_CONTROLLER,
+  EMISSION_MANAGER: BASE_V3_ADDRESSES.EMISSION_MANAGER,
+  REGISTRY: BASE_V3_ADDRESSES.REGISTRY,
+  
+  // Supported Assets on Base (from Address Book)
+  ASSETS: BASE_V3_ASSETS,
+  
+  // Chain ID
+  CHAIN_ID: BASE_V3_ADDRESSES.CHAIN_ID,
+  CHAIN_NAME: BASE_V3_ADDRESSES.CHAIN_NAME,
+  EXPLORER: BASE_V3_ADDRESSES.EXPLORER,
+  IS_TESTNET: BASE_V3_ADDRESSES.IS_TESTNET,
+} as const;
+
 // Network Mode Type
 export type NetworkMode = "testnet" | "mainnet";
 
-// Get active Aave config based on mode
+// Get active Aave config based on chain ID
+export const getAaveConfigByChainId = (chainId: number | undefined) => {
+  switch (chainId) {
+    case 137: // Polygon Mainnet
+      return AAVE_V3_POLYGON;
+    case 8453: // Base Mainnet
+      return AAVE_V3_BASE;
+    case 11155111: // Sepolia Testnet
+      return AAVE_V3_SEPOLIA;
+    default:
+      // Default to Polygon mainnet if chain not supported
+      return AAVE_V3_POLYGON;
+  }
+};
+
+// Get active Aave config based on mode (legacy, for backward compatibility)
 export const getAaveConfig = (mode: NetworkMode) => {
   return mode === "mainnet" ? AAVE_V3_POLYGON : AAVE_V3_SEPOLIA;
 };
