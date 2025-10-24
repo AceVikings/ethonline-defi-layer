@@ -15,7 +15,6 @@ export default function LandingPage() {
           <div className="flex gap-6 items-center">
             <a href="#features" className="text-slate-600 hover:text-slate-900 transition">Features</a>
             <a href="#how-it-works" className="text-slate-600 hover:text-slate-900 transition">How It Works</a>
-            <a href="#nodes" className="text-slate-600 hover:text-slate-900 transition">Nodes</a>
             <Link 
               to="/app" 
               className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-violet-500 text-white rounded-lg font-medium hover:shadow-md transition shadow-sm"
@@ -145,30 +144,6 @@ export default function LandingPage() {
                 </p>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Node Catalog Preview */}
-        <div id="nodes" className="mt-32 max-w-6xl mx-auto">
-          <h2 className="text-4xl font-bold text-center mb-4 text-slate-800">Available Nodes</h2>
-          <p className="text-center text-slate-600 mb-16 max-w-2xl mx-auto">
-            Each node is a reusable ability with typed inputs, outputs, and validation
-          </p>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[
-              { name: 'Swap Node', desc: 'DEX token swaps', color: 'from-blue-500 to-violet-500' },
-              { name: 'Aave V3 Node', desc: 'Lend, borrow, supply', color: 'from-violet-500 to-fuchsia-500' },
-              { name: 'Transfer Node', desc: 'ERC-20 transfers', color: 'from-cyan-500 to-blue-500' },
-              { name: 'AI Node', desc: 'ASI-driven decisions', color: 'from-emerald-500 to-teal-500' },
-              { name: 'If/Else Node', desc: 'Conditional branching', color: 'from-amber-500 to-orange-500' },
-              { name: 'Oracle Node', desc: 'Price & market data', color: 'from-rose-500 to-pink-500' },
-            ].map((node) => (
-              <div key={node.name} className="p-6 bg-white border border-slate-200 rounded-lg hover:border-blue-300 hover:shadow-md transition">
-                <div className={`w-10 h-10 bg-gradient-to-br ${node.color} rounded-lg mb-3 shadow-sm`}></div>
-                <h4 className="font-bold text-slate-800 mb-1">{node.name}</h4>
-                <p className="text-sm text-slate-600">{node.desc}</p>
-              </div>
-            ))}
           </div>
         </div>
 
