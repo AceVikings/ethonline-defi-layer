@@ -203,7 +203,7 @@ export default function LandingPage() {
             <p className="text-center text-slate-500 font-medium text-sm">
               Powered by <span className="font-bold text-slate-700">Lit Protocol</span> · <span className="font-bold text-slate-700">ASI Alliance</span> · <span className="font-bold text-slate-700">Avail</span>
             </p>
-            <p className="text-center text-slate-400 text-sm mt-3">© 2025 DeFlow. Open source and built for builders.</p>
+            <p className="text-center text-slate-400 text-sm mt-3">Built for EthOnline (Work in Progress)</p>
           </div>
         </footer>
       </div>
