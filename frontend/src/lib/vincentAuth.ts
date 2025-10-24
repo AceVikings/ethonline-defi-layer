@@ -17,7 +17,8 @@ export const handleAuthCallback = async () => {
       throw new Error('No JWT found in URL');
     }
     
-    const result = await vincentAuthClient.decodeVincentJWTFromUri(window.location.origin);
+    // Use the redirect URI as the expected audience
+    const result = await vincentAuthClient.decodeVincentJWTFromUri(REDIRECT_URI);
     
     if (!result) {
       throw new Error('Failed to decode JWT');
