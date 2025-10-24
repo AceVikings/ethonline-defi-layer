@@ -1,6 +1,10 @@
 import { Link } from 'react-router-dom';
+import { redirectToVincentConnect } from '../lib/vincentAuth';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function LandingPage() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50/40 to-slate-100">
       {/* Hero Section */}
@@ -45,15 +49,27 @@ export default function LandingPage() {
             Powered by Lit Protocol, optimized by AI, built for reliability.
           </p>
           <div className="flex gap-4 justify-center">
-            <Link 
-              to="/app" 
-              className="px-8 py-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-bold text-lg hover:shadow-xl transition shadow-lg border border-orange-600/20 inline-flex items-center gap-2"
-            >
-              <span>Start Building</span>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </Link>
+            {isAuthenticated ? (
+              <Link 
+                to="/app" 
+                className="px-8 py-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-bold text-lg hover:shadow-xl transition shadow-lg border border-orange-600/20 inline-flex items-center gap-2"
+              >
+                <span>Open Dashboard</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </Link>
+            ) : (
+              <button
+                onClick={redirectToVincentConnect}
+                className="px-8 py-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-bold text-lg hover:shadow-xl transition shadow-lg border border-orange-600/20 inline-flex items-center gap-2"
+              >
+                <span>Connect with Vincent</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </button>
+            )}
             <a 
               href="#how-it-works" 
               className="px-8 py-4 bg-white text-slate-900 rounded-lg font-bold text-lg hover:bg-slate-50 transition border-2 border-slate-300 shadow-sm inline-flex items-center gap-2"
