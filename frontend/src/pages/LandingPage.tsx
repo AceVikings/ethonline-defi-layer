@@ -2,176 +2,209 @@ import { Link } from 'react-router-dom';
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-violet-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50/40 to-slate-100">
       {/* Hero Section */}
       <div className="container mx-auto px-6 py-16">
         <nav className="flex justify-between items-center mb-20">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-500 rounded-lg flex items-center justify-center shadow-sm">
-              <span className="text-white font-bold text-xl">D</span>
+            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg flex items-center justify-center shadow-md relative overflow-hidden">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(255,255,255,0.3),transparent)]"></div>
+              <svg className="w-6 h-6 text-white relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
             </div>
-            <span className="text-2xl font-bold text-slate-800">DeFlow</span>
+            <span className="text-2xl font-black tracking-tight text-slate-900" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>DeFlow</span>
           </div>
-          <div className="flex gap-6 items-center">
-            <a href="#features" className="text-slate-600 hover:text-slate-900 transition">Features</a>
-            <a href="#how-it-works" className="text-slate-600 hover:text-slate-900 transition">How It Works</a>
+          <div className="flex gap-8 items-center">
+            <a href="#features" className="text-slate-700 hover:text-orange-600 transition font-medium">Features</a>
+            <a href="#how-it-works" className="text-slate-700 hover:text-orange-600 transition font-medium">How It Works</a>
             <Link 
               to="/app" 
-              className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-violet-500 text-white rounded-lg font-medium hover:shadow-md transition shadow-sm"
+              className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-bold hover:shadow-lg transition shadow-md border border-orange-600/20"
             >
-              Launch App
+              Launch App →
             </Link>
           </div>
         </nav>
 
-        <div className="max-w-5xl mx-auto text-center mt-32">
-          <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-slate-800 via-blue-600 to-violet-600 bg-clip-text text-transparent">
-            Build DeFi Strategies
+        <div className="max-w-5xl mx-auto text-center mt-28">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-orange-100 border border-orange-200 rounded-full mb-8">
+            <svg className="w-4 h-4 text-orange-600 animate-spin" style={{ animationDuration: '3s' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            </svg>
+            <span className="text-sm font-bold text-orange-800 uppercase tracking-wider">Autonomous DeFi Automation</span>
+          </div>
+          <h1 className="text-7xl font-black mb-6 text-slate-900 leading-[1.1] tracking-tight" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+            Automate DeFi
             <br />
-            Like Connecting Blocks
+            <span className="bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700 bg-clip-text text-transparent">Like Clockwork</span>
           </h1>
-          <p className="text-xl text-slate-600 mb-12 max-w-3xl mx-auto">
-            Node-based workflow engine for DeFi. Compose strategies with visual nodes, 
-            execute trustlessly via Lit Protocol, optimize with AI agents.
+          <p className="text-xl text-slate-600 mb-12 max-w-3xl mx-auto leading-relaxed font-medium">
+            Build automated strategies with precision-engineered nodes. Connect, simulate, execute. 
+            Powered by Lit Protocol, optimized by AI, built for reliability.
           </p>
           <div className="flex gap-4 justify-center">
             <Link 
               to="/app" 
-              className="px-8 py-4 bg-gradient-to-r from-blue-500 to-violet-500 text-white rounded-lg font-semibold text-lg hover:shadow-lg transition shadow-md"
+              className="px-8 py-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-bold text-lg hover:shadow-xl transition shadow-lg border border-orange-600/20 inline-flex items-center gap-2"
             >
-              Start Building
+              <span>Start Building</span>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
             </Link>
             <a 
               href="#how-it-works" 
-              className="px-8 py-4 bg-white text-slate-800 rounded-lg font-semibold text-lg hover:bg-slate-50 transition border border-slate-200 shadow-sm"
+              className="px-8 py-4 bg-white text-slate-900 rounded-lg font-bold text-lg hover:bg-slate-50 transition border-2 border-slate-300 shadow-sm inline-flex items-center gap-2"
             >
-              Learn More
+              <span>How It Works</span>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+              </svg>
             </a>
           </div>
         </div>
 
         {/* Feature Cards */}
         <div id="features" className="grid md:grid-cols-3 gap-6 mt-32 max-w-6xl mx-auto">
-          <div className="p-8 bg-white border border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-md transition">
-            <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          <div className="p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-400 hover:shadow-xl transition group">
+            <div className="w-14 h-14 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200 group-hover:scale-110 transition">
+              <svg className="w-7 h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
               </svg>
             </div>
-            <h3 className="text-xl font-bold text-slate-800 mb-3">Node-Based</h3>
-            <p className="text-slate-600">
-              Compose complex DeFi strategies by connecting reusable node blocks. Swap, lend, transfer, and automate with AI.
+            <h3 className="text-xl font-black text-slate-900 mb-3 tracking-tight">Modular Nodes</h3>
+            <p className="text-slate-600 leading-relaxed font-medium">
+              Snap together precision-built modules. Swap, lend, transfer—each node engineered for reliability.
             </p>
           </div>
 
-          <div className="p-8 bg-white border border-slate-200 rounded-xl hover:border-violet-300 hover:shadow-md transition">
-            <div className="w-12 h-12 bg-violet-50 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          <div className="p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-400 hover:shadow-xl transition group">
+            <div className="w-14 h-14 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200 group-hover:scale-110 transition">
+              <svg className="w-7 h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
             </div>
-            <h3 className="text-xl font-bold text-slate-800 mb-3">Trustless Execution</h3>
-            <p className="text-slate-600">
-              Execute via Lit Protocol Vincent abilities with PKP-based delegation. No custody, full control, transparent.
+            <h3 className="text-xl font-black text-slate-900 mb-3 tracking-tight">Trustless Engine</h3>
+            <p className="text-slate-600 leading-relaxed font-medium">
+              PKP-powered execution. Zero custody, total control. Your keys, your automation.
             </p>
           </div>
 
-          <div className="p-8 bg-white border border-slate-200 rounded-xl hover:border-cyan-300 hover:shadow-md transition">
-            <div className="w-12 h-12 bg-cyan-50 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          <div className="p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-400 hover:shadow-xl transition group">
+            <div className="w-14 h-14 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200 group-hover:scale-110 transition">
+              <svg className="w-7 h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <h3 className="text-xl font-bold text-slate-800 mb-3">AI-Powered</h3>
-            <p className="text-slate-600">
-              ASI agents generate strategies, detect market crashes, and suggest optimal workflows based on real-time data.
+            <h3 className="text-xl font-black text-slate-900 mb-3 tracking-tight">AI Optimization</h3>
+            <p className="text-slate-600 leading-relaxed font-medium">
+              Real-time market intelligence. Automated crash detection. Strategies that adapt.
             </p>
           </div>
         </div>
 
         {/* How It Works */}
-        <div id="how-it-works" className="mt-32 max-w-4xl mx-auto">
-          <h2 className="text-4xl font-bold text-center mb-16 text-slate-800">How It Works</h2>
-          <div className="space-y-8">
-            <div className="flex gap-6 items-start">
-              <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-500 to-violet-500 rounded-full flex items-center justify-center text-white font-bold shadow-sm">
+        <div id="how-it-works" className="mt-32 max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-orange-100 border border-orange-200 rounded-full mb-4">
+              <span className="text-xs font-black text-orange-800 uppercase tracking-widest">The Process</span>
+            </div>
+            <h2 className="text-5xl font-black text-slate-900 tracking-tight">Precision Engineering</h2>
+          </div>
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="relative p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-300 transition group">
+              <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg border-2 border-white">
                 1
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-800 mb-2">Compose Your Strategy</h3>
-                <p className="text-slate-600">
-                  Drag and drop nodes on the visual canvas. Connect swap nodes, Aave lending, token transfers, 
-                  AI decision nodes, and conditionals to build your workflow.
-                </p>
-              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-3 mt-2 tracking-tight">Build</h3>
+              <p className="text-slate-600 leading-relaxed font-medium">
+                Drag, drop, connect. Assemble your automation workflow with precision-tooled nodes. Visual, intuitive, powerful.
+              </p>
             </div>
 
-            <div className="flex gap-6 items-start">
-              <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-500 to-violet-500 rounded-full flex items-center justify-center text-white font-bold shadow-sm">
+            <div className="relative p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-300 transition group">
+              <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg border-2 border-white">
                 2
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-800 mb-2">Simulate & Validate</h3>
-                <p className="text-slate-600">
-                  The orchestrator runs a dry-run simulation, checking balances, gas costs, approvals, and slippage. 
-                  See estimated outcomes before signing.
-                </p>
-              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-3 mt-2 tracking-tight">Simulate</h3>
+              <p className="text-slate-600 leading-relaxed font-medium">
+                Test-drive before deployment. Dry-run simulation checks every detail—gas, approvals, outcomes.
+              </p>
             </div>
 
-            <div className="flex gap-6 items-start">
-              <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-500 to-violet-500 rounded-full flex items-center justify-center text-white font-bold shadow-sm">
+            <div className="relative p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-300 transition group">
+              <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg border-2 border-white">
                 3
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-800 mb-2">Execute with PKPs</h3>
-                <p className="text-slate-600">
-                  Approve the workflow and Vincent Runner executes it using Lit Protocol PKPs with scoped delegation. 
-                  Track every step in real-time.
-                </p>
-              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-3 mt-2 tracking-tight">Execute</h3>
+              <p className="text-slate-600 leading-relaxed font-medium">
+                PKP-powered trustless execution. Sign once, automate forever. Every transaction logged, auditable, yours.
+              </p>
             </div>
 
-            <div className="flex gap-6 items-start">
-              <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-500 to-violet-500 rounded-full flex items-center justify-center text-white font-bold shadow-sm">
+            <div className="relative p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-300 transition group">
+              <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg border-2 border-white">
                 4
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-800 mb-2">Monitor & Optimize</h3>
-                <p className="text-slate-600">
-                  ASI agents monitor markets and propose re-entry or hedge strategies based on your policies. 
-                  Full audit trail and exportable history.
-                </p>
-              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-3 mt-2 tracking-tight">Monitor</h3>
+              <p className="text-slate-600 leading-relaxed font-medium">
+                AI agents watch the markets 24/7. Crash protection, re-entry signals, adaptive strategies on autopilot.
+              </p>
             </div>
           </div>
         </div>
 
         {/* CTA Section */}
         <div className="mt-32 text-center">
-          <div className="max-w-3xl mx-auto p-12 bg-gradient-to-br from-blue-50 to-violet-50 border border-blue-100 rounded-2xl">
-            <h2 className="text-3xl font-bold text-slate-800 mb-4">Ready to Build?</h2>
-            <p className="text-slate-600 mb-8">
-              Start composing your first DeFi strategy with DeFlow today
-            </p>
-            <Link 
-              to="/app" 
-              className="inline-block px-8 py-4 bg-gradient-to-r from-blue-500 to-violet-500 text-white rounded-lg font-semibold text-lg hover:shadow-lg transition shadow-md"
-            >
-              Launch App
-            </Link>
+          <div className="relative max-w-4xl mx-auto p-12 bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 border-2 border-orange-200 rounded-2xl overflow-hidden">
+            <div className="absolute top-4 right-4 w-32 h-32 bg-orange-200/30 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-4 left-4 w-40 h-40 bg-amber-200/30 rounded-full blur-3xl"></div>
+            <div className="relative z-10">
+              <svg className="w-16 h-16 text-orange-500 mx-auto mb-6 animate-spin" style={{ animationDuration: '6s' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              </svg>
+              <h2 className="text-4xl font-black text-slate-900 mb-4 tracking-tight">Set Your DeFi in Motion</h2>
+              <p className="text-lg text-slate-700 mb-8 font-medium max-w-2xl mx-auto">
+                Join the automation revolution. Build once, execute forever.
+              </p>
+              <Link 
+                to="/app" 
+                className="inline-flex items-center gap-3 px-10 py-5 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-black text-xl hover:shadow-2xl transition shadow-xl border-2 border-orange-600/20"
+              >
+                <span>Launch DeFlow</span>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </Link>
+            </div>
           </div>
         </div>
 
         {/* Footer */}
-        <footer className="mt-32 pt-12 border-t border-slate-200 text-center text-slate-500">
-          <p className="mb-4">Built with Lit Protocol Vincent, ASI Alliance, and Avail</p>
-          <div className="flex gap-6 justify-center">
-            <a href="#" className="hover:text-slate-800 transition">Docs</a>
-            <a href="#" className="hover:text-slate-800 transition">GitHub</a>
-            <a href="#" className="hover:text-slate-800 transition">Discord</a>
+        <footer className="mt-32 pt-12 border-t-2 border-slate-200">
+          <div className="flex justify-between items-center mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg flex items-center justify-center shadow-sm">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                </svg>
+              </div>
+              <span className="font-black text-slate-900">DeFlow</span>
+            </div>
+            <div className="flex gap-8">
+              <a href="#" className="text-slate-600 hover:text-orange-600 transition font-bold">Docs</a>
+              <a href="#" className="text-slate-600 hover:text-orange-600 transition font-bold">GitHub</a>
+              <a href="#" className="text-slate-600 hover:text-orange-600 transition font-bold">Discord</a>
+            </div>
           </div>
-          <p className="mt-8 text-sm">© 2025 DeFlow. Open source.</p>
+          <div className="pt-8 border-t border-slate-200">
+            <p className="text-center text-slate-500 font-medium text-sm">
+              Powered by <span className="font-bold text-slate-700">Lit Protocol</span> · <span className="font-bold text-slate-700">ASI Alliance</span> · <span className="font-bold text-slate-700">Avail</span>
+            </p>
+            <p className="text-center text-slate-400 text-sm mt-3">© 2025 DeFlow. Open source and built for builders.</p>
+          </div>
         </footer>
       </div>
     </div>
