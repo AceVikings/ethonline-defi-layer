@@ -19,12 +19,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(
-  cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:5176",
-    credentials: true,
-  })
-);
+app.use(cors()); // Allow all origins
 app.use(express.json());
 
 // Health check
