@@ -18,8 +18,9 @@
   "license": "MIT",
   "dependencies": {
     "@lit-protocol/lit-node-client": "^7.3.1",
-    "@lit-protocol/vincent-ability-erc20-approval": "^3.1.4",
-    "@lit-protocol/vincent-ability-uniswap-swap": "^8.0.0",
+    "@lit-protocol/vincent-ability-erc20-approval": "^3.1.0",
+    "@lit-protocol/vincent-ability-evm-transaction-signer": "^0.1.4",
+    "@lit-protocol/vincent-ability-uniswap-swap": "^5.0.0",
     "@lit-protocol/vincent-app-sdk": "^2.2.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
