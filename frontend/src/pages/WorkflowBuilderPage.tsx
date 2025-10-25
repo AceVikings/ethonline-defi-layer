@@ -18,6 +18,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { apiClient } from '../lib/apiClient';
+import { showToast, CustomToaster } from '../lib/toast';
 
 // Custom node component with dynamic handles based on node type
 const CustomNode = ({ data }: any) => {
@@ -563,7 +564,7 @@ export default function WorkflowBuilderPage() {
     if (type === 'trigger') {
       const existingTrigger = nodes.find(node => node.data.type === 'trigger');
       if (existingTrigger) {
-        alert('Only one trigger node is allowed per workflow');
+        showToast.warning('Only one trigger node is allowed per workflow');
         return;
       }
     }
@@ -605,6 +606,15 @@ export default function WorkflowBuilderPage() {
       
       if (!nodeType) return;
 
+      // Check if trying to add a trigger when one already exists
+      if (type === 'trigger') {
+        const existingTrigger = nodes.find(node => node.data.type === 'trigger');
+        if (existingTrigger) {
+          showToast.warning('Only one trigger node is allowed per workflow');
+          return;
+        }
+      }
+
       // Get the React Flow viewport bounds
       const reactFlowBounds = (event.target as HTMLElement).getBoundingClientRect();
       const position = {
@@ -625,7 +635,7 @@ export default function WorkflowBuilderPage() {
 
       setNodes((nds) => [...nds, newNode]);
     },
-    [setNodes]
+    [setNodes, nodes]
   );
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
@@ -792,33 +802,51 @@ export default function WorkflowBuilderPage() {
                 <p className="text-sm text-gray-600">Drag or click to add nodes to your workflow</p>
               </div>
               <div className="space-y-3">
-                {NODE_TYPES.map((nodeType) => (
-                  <div
-                    key={nodeType.type}
-                    draggable
-                    onDragStart={(e) => onDragStart(e, nodeType.type)}
-                    onClick={() => addNode(nodeType.type)}
-                    className="group relative overflow-hidden bg-white border-2 border-gray-200 rounded-xl hover:border-orange-400 hover:shadow-xl transition-all duration-200 cursor-move"
-                  >
-                    {/* Gradient background accent */}
-                    <div className={`absolute inset-0 bg-gradient-to-br ${nodeType.color} opacity-0 group-hover:opacity-5 transition-opacity duration-200`} />
-                    
-                    <div className="relative p-4 flex items-start gap-4">
-                      {/* Icon badge */}
-                      <div className={`flex-shrink-0 w-14 h-14 bg-gradient-to-br ${nodeType.color} rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-200`}>
-                        <span className="text-lg font-black text-white">
-                          {nodeType.type.slice(0, 2).toUpperCase()}
-                        </span>
-                      </div>
+                {NODE_TYPES.map((nodeType) => {
+                  const isTrigger = nodeType.type === 'trigger';
+                  const hasTrigger = nodes.some(node => node.data.type === 'trigger');
+                  const isDisabled = isTrigger && hasTrigger;
+                  
+                  return (
+                    <div
+                      key={nodeType.type}
+                      draggable={!isDisabled}
+                      onDragStart={(e) => !isDisabled && onDragStart(e, nodeType.type)}
+                      onClick={() => !isDisabled && addNode(nodeType.type)}
+                      className={`group relative overflow-hidden bg-white border-2 rounded-xl transition-all duration-200 ${
+                        isDisabled 
+                          ? 'border-gray-200 opacity-50 cursor-not-allowed' 
+                          : 'border-gray-200 hover:border-orange-400 hover:shadow-xl cursor-move'
+                      }`}
+                    >
+                      {/* Gradient background accent */}
+                      <div className={`absolute inset-0 bg-gradient-to-br ${nodeType.color} opacity-0 group-hover:opacity-5 transition-opacity duration-200`} />
                       
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-gray-900 mb-1 text-sm group-hover:text-orange-600 transition-colors">
-                          {nodeType.label}
-                        </h3>
-                        <p className="text-xs text-gray-600 leading-relaxed">
-                          {nodeType.description}
-                        </p>
+                      {/* Disabled overlay */}
+                      {isDisabled && (
+                        <div className="absolute inset-0 bg-gray-50/80 flex items-center justify-center z-10">
+                          <span className="text-xs font-semibold text-gray-600 bg-white px-2 py-1 rounded shadow-sm">
+                            Already Added
+                          </span>
+                        </div>
+                      )}
+                      
+                      <div className="relative p-4 flex items-start gap-4">
+                        {/* Icon badge */}
+                        <div className={`flex-shrink-0 w-14 h-14 bg-gradient-to-br ${nodeType.color} rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-200`}>
+                          <span className="text-lg font-black text-white">
+                            {nodeType.type.slice(0, 2).toUpperCase()}
+                          </span>
+                        </div>
+                        
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-gray-900 mb-1 text-sm group-hover:text-orange-600 transition-colors">
+                            {nodeType.label}
+                          </h3>
+                          <p className="text-xs text-gray-600 leading-relaxed">
+                            {nodeType.description}
+                          </p>
                       </div>
                       
                       {/* Drag indicator */}
@@ -832,7 +860,8 @@ export default function WorkflowBuilderPage() {
                     {/* Bottom accent line */}
                     <div className={`h-1 bg-gradient-to-r ${nodeType.color} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-200`} />
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               {nodes.length === 0 && (
