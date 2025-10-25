@@ -2,7 +2,7 @@ import { getPKPInfo } from '@lit-protocol/vincent-app-sdk/jwt';
 import { ethers } from 'ethers';
 import Workflow from '../models/Workflow.js';
 import ExecutionHistory from '../models/ExecutionHistory.js';
-import { getRpcUrl, getChainId } from '../config/chains.js';
+import { getRpcUrl, getChainId, normalizeTokenAddress } from '../config/chains.js';
 import {
   generateSignedUniswapQuote,
   getUniswapSwapAbilityClient,
@@ -432,6 +432,14 @@ async function executeSwapNode(node, pkpInfo) {
     const chainId = getChainId(config.chain);
     const delegatorPkpEthAddress = pkpInfo.ethAddress;
     
+    // Normalize token addresses (convert native ETH placeholder to WETH)
+    const normalizedFromToken = normalizeTokenAddress(config.chain, config.fromToken);
+    const normalizedToToken = normalizeTokenAddress(config.chain, config.toToken);
+    
+    console.log(`   → Normalized addresses:`);
+    console.log(`     From: ${config.fromToken} → ${normalizedFromToken}`);
+    console.log(`     To: ${config.toToken} → ${normalizedToToken}`);
+    
     // Convert slippage percentage to basis points (1% = 100 basis points)
     const slippageBps = Math.round((parseFloat(config.slippage) || 0.5) * 100);
     
@@ -440,9 +448,9 @@ async function executeSwapNode(node, pkpInfo) {
     // Generate signed quote using Vincent SDK
     const signedUniswapQuote = await generateSignedUniswapQuote({
       rpcUrl,
-      tokenInAddress: config.fromToken,
+      tokenInAddress: normalizedFromToken,
       tokenInAmount: config.amount,
-      tokenOutAddress: config.toToken,
+      tokenOutAddress: normalizedToToken,
       recipient: delegatorPkpEthAddress,
       slippageTolerance: slippageBps,
     });
@@ -467,7 +475,7 @@ async function executeSwapNode(node, pkpInfo) {
         rpcUrl,
         chainId,
         spenderAddress: uniswapRouterAddress,
-        tokenAddress: config.fromToken,
+        tokenAddress: normalizedFromToken,
         tokenAmount: tokenAmountWei,
         alchemyGasSponsor: false,
       },
@@ -496,7 +504,7 @@ async function executeSwapNode(node, pkpInfo) {
           rpcUrl,
           chainId,
           spenderAddress: uniswapRouterAddress,
-          tokenAddress: config.fromToken,
+          tokenAddress: normalizedFromToken,
           tokenAmount: tokenAmountWei,
           alchemyGasSponsor: false,
         },
