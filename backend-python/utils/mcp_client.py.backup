@@ -1,0 +1,453 @@
+"""
+MCP (Model Context Protocol) Client
+
+This module provides integration with MCP servers following the MCP specification.
+Supports:
+- Official Blockscout MCP server (https://mcp.blockscout.com/mcp)
+- Remote MCP servers via Smithery.ai
+- Direct API fallbacks
+"""
+
+import os
+import requests
+import base64
+import json
+import asyncio
+from typing import Dict, List, Any, Optional
+from contextlib import AsyncExitStack
+
+
+class MCPClient:
+    """
+    Client for interacting with MCP servers.
+    
+    Supports:
+    - Official Blockscout MCP server at https://mcp.blockscout.com/mcp
+    - Remote MCP servers via Smithery.ai (when available)
+    - CoinGecko API for pricing data
+    """
+    
+    def __init__(self):
+        """Initialize MCP client."""
+        self.sessions: Dict[str, Any] = {}
+        self.exit_stack = AsyncExitStack()
+        self.tool_definitions = {}
+        self.tool_server_map = {}
+        
+        # API keys
+        self.smithery_api_key = os.getenv('SMITHERY_API_KEY')
+        self.coingecko_api_key = os.getenv('COINGECKO_API_KEY', 'CG-JWfCi4Jma9e9baief59WS9Ua')
+        
+        # MCP server URLs
+        self.blockscout_mcp_url = "https://mcp.blockscout.com/mcp"
+    
+    async def connect_to_server(self, server_type: str, config: Optional[Dict] = None):
+        """
+        Connect to an MCP server.
+        
+        Args:
+            server_type: Type of server (e.g., 'blockscout', 'coingecko', '@owner/server-name')
+            config: Optional server-specific configuration
+        """
+        if server_type == 'blockscout':
+            # Use official Blockscout MCP server
+            await self._connect_to_blockscout_mcp()
+        elif server_type == 'coingecko':
+            # CoinGecko doesn't have MCP server, use direct API
+            self._setup_coingecko_tools()
+        elif server_type.startswith('@') and self.smithery_api_key:
+            # Connect to Smithery-hosted MCP server
+            await self._connect_to_smithery_server(server_type, config or {})
+        else:
+            print(f"Server type {server_type} not supported")
+    
+    async def _connect_to_blockscout_mcp(self):
+        """Connect to official Blockscout MCP server."""
+        try:
+            import mcp
+            from mcp.client.sse import sse_client
+            
+            print(f"🔌 Connecting to Blockscout MCP at {self.blockscout_mcp_url}...")
+            
+            # Connect using SSE transport
+            async with sse_client(self.blockscout_mcp_url) as (read, write):
+                async with mcp.ClientSession(read, write) as session:
+                    # Initialize the connection
+                    await session.initialize()
+                    
+                    # List available tools
+                    tools_result = await session.list_tools()
+                    tools = tools_result.tools
+                    
+                    # Store session
+                    self.sessions['blockscout'] = session
+                    
+                    # Register tools
+                    for tool in tools:
+                        tool_info = {
+                            "type": "function",
+                            "function": {
+                                "name": f"blockscout_{tool.name}",
+                                "description": tool.description or f"Blockscout: {tool.name}",
+                                "parameters": tool.inputSchema or {"type": "object", "properties": {}}
+                            }
+                        }
+                        self.tool_definitions[f"blockscout_{tool.name}"] = tool_info
+                        self.tool_server_map[f"blockscout_{tool.name}"] = 'blockscout'
+                    
+                    print(f"✅ Connected to Blockscout MCP")
+                    print(f"   Available tools: {', '.join([t.name for t in tools])}")
+                    
+        except ImportError:
+            print("❌ MCP library not installed. Run: pip install mcp")
+            print("   Falling back to direct API...")
+            self._setup_blockscout_direct_api()
+        except Exception as e:
+            print(f"❌ Error connecting to Blockscout MCP: {e}")
+            print("   Falling back to direct API...")
+            self._setup_blockscout_direct_api()
+    
+    def _setup_blockscout_direct_api(self):
+        """Fallback: Setup Blockscout tools using direct API."""
+        tools = self.get_blockscout_tools()
+        for tool in tools:
+            tool_name = tool['function']['name']
+            self.tool_definitions[tool_name] = tool
+            self.tool_server_map[tool_name] = 'blockscout_direct'
+        print(f"✅ Setup Blockscout direct API with {len(tools)} tools")
+    
+    def _setup_coingecko_tools(self):
+        """Setup CoinGecko pricing tools."""
+        tools = self.get_coingecko_tools()
+        for tool in tools:
+            tool_name = tool['function']['name']
+            self.tool_definitions[tool_name] = tool
+            self.tool_server_map[tool_name] = 'coingecko'
+        print(f"✅ Setup CoinGecko API with {len(tools)} tools")
+    
+    async def _connect_to_smithery_server(self, server_path: str, config: Dict):
+        """Connect to a Smithery-hosted MCP server using the MCP protocol."""
+        try:
+            import mcp
+            from mcp.client.streamable_http import streamablehttp_client
+            
+            # Encode configuration
+            base_config = {"ignoreRobotsTxt": True}
+            full_config = {**base_config, **config}
+            config_b64 = base64.b64encode(json.dumps(full_config).encode()).decode()
+            
+            # Build Smithery URL
+            url = f"https://server.smithery.ai/{server_path}/mcp?config={config_b64}&api_key={self.smithery_api_key}"
+            
+            # Connect using MCP protocol
+            read_stream, write_stream, _ = await self.exit_stack.enter_async_context(
+                streamablehttp_client(url)
+            )
+            
+            session = await self.exit_stack.enter_async_context(
+                mcp.ClientSession(read_stream, write_stream)
+            )
+            
+            await session.initialize()
+            tools_result = await session.list_tools()
+            tools = tools_result.tools
+            
+            self.sessions[server_path] = session
+            
+            # Register tools
+            for tool in tools:
+                tool_info = {
+                    "name": tool.name,
+                    "description": f"[{server_path}] {tool.description}",
+                    "input_schema": tool.inputSchema,
+                    "server": server_path,
+                    "tool_name": tool.name
+                }
+                self.tool_definitions[tool.name] = tool_info
+                self.tool_server_map[tool.name] = server_path
+            
+            print(f"✓ Connected to {server_path} via MCP protocol")
+            print(f"  Available tools: {', '.join([t.name for t in tools])}")
+            
+        except Exception as e:
+            print(f"✗ Error connecting to {server_path}: {e}")
+            raise
+    
+    async def cleanup(self):
+        """Close all MCP connections."""
+        await self.exit_stack.aclose()
+    
+    def get_blockscout_tools(self) -> List[Dict[str, Any]]:
+        """
+        Get tool definitions for Blockscout MCP server.
+        
+        Returns:
+            List of tool definitions in OpenAI function calling format
+        """
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "blockscout_get_transactions",
+                    "description": "Get transaction history for a blockchain address. Returns recent transactions with details like hash, value, timestamp, and status.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string",
+                                "description": "The blockchain address to get transactions for (0x...)"
+                            },
+                            "chainId": {
+                                "type": "string",
+                                "description": "Chain ID (e.g., '1' for Ethereum, '8453' for Base)",
+                                "default": "8453"
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": "Maximum number of transactions to return",
+                                "default": 10
+                            }
+                        },
+                        "required": ["address"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "blockscout_get_balance",
+                    "description": "Get token balances for a blockchain address. Returns native token balance and ERC-20 token holdings.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string",
+                                "description": "The blockchain address to get balances for (0x...)"
+                            },
+                            "chainId": {
+                                "type": "string",
+                                "description": "Chain ID (e.g., '1' for Ethereum, '8453' for Base)",
+                                "default": "8453"
+                            }
+                        },
+                        "required": ["address"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "blockscout_get_token_info",
+                    "description": "Get detailed information about a specific token. Returns token name, symbol, decimals, total supply, and contract details.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "tokenAddress": {
+                                "type": "string",
+                                "description": "The token contract address (0x...)"
+                            },
+                            "chainId": {
+                                "type": "string",
+                                "description": "Chain ID (e.g., '1' for Ethereum, '8453' for Base)",
+                                "default": "8453"
+                            }
+                        },
+                        "required": ["tokenAddress"]
+                    }
+                }
+            }
+        ]
+        
+        return tools
+    
+    def execute_blockscout_tool(self, tool_name: str, arguments: Dict[str, Any]) -> str:
+        """
+        Execute a Blockscout MCP tool call.
+        
+        Args:
+            tool_name: Name of the tool to execute
+            arguments: Arguments for the tool
+            
+        Returns:
+            Formatted result string
+        """
+        try:
+            # Extract chain ID
+            chain_id = arguments.get('chainId', '8453')
+            
+            # Map chain ID to Blockscout instance
+            blockscout_urls = {
+                '1': 'https://eth.blockscout.com/api',
+                '8453': 'https://base.blockscout.com/api',
+                '84532': 'https://base-sepolia.blockscout.com/api',
+                '11155111': 'https://eth-sepolia.blockscout.com/api'
+            }
+            
+            base_url = blockscout_urls.get(chain_id, 'https://base.blockscout.com/api')
+            
+            if tool_name == "blockscout_get_transactions":
+                return self._get_transactions(base_url, arguments)
+            elif tool_name == "blockscout_get_balance":
+                return self._get_balance(base_url, arguments)
+            elif tool_name == "blockscout_get_token_info":
+                return self._get_token_info(base_url, arguments)
+            else:
+                return f"Unknown tool: {tool_name}"
+                
+        except Exception as e:
+            return f"Error executing {tool_name}: {str(e)}"
+    
+    def _get_transactions(self, base_url: str, args: Dict[str, Any]) -> str:
+        """Get transaction history."""
+        address = args.get('address')
+        limit = args.get('limit', 10)
+        
+        try:
+            # Blockscout API doesn't accept limit in query params
+            response = requests.get(
+                f"{base_url}/v2/addresses/{address}/transactions",
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                items = data.get('items', [])
+                
+                if not items:
+                    return f"No transactions found for address {address}"
+                
+                # Limit the results after fetching
+                limited_items = items[:limit]
+                
+                result = f"Found {len(items)} total transactions for {address}. Showing first {len(limited_items)}:\n\n"
+                for tx in limited_items:
+                    value_wei = tx.get('value', '0')
+                    # Convert wei to ETH for readability
+                    try:
+                        value_eth = float(value_wei) / 1e18
+                        value_str = f"{value_eth:.6f} ETH" if value_eth > 0 else "0 ETH"
+                    except:
+                        value_str = f"{value_wei} wei"
+                    
+                    result += f"- Hash: {tx.get('hash', 'N/A')[:16]}...{tx.get('hash', 'N/A')[-4:]}\n"
+                    result += f"  Value: {value_str}\n"
+                    result += f"  Status: {tx.get('status', 'unknown')}\n"
+                    result += f"  From: {tx.get('from', {}).get('hash', 'N/A')[:10]}...\n"
+                    result += f"  To: {tx.get('to', {}).get('hash', 'N/A')[:10]}...\n"
+                    result += f"  Timestamp: {tx.get('timestamp', 'N/A')}\n"
+                    result += f"  Method: {tx.get('method', 'transfer') or 'transfer'}\n\n"
+                
+                return result
+            else:
+                return f"Error fetching transactions: HTTP {response.status_code} - {response.text[:200]}"
+                
+        except Exception as e:
+            return f"Error fetching transactions: {str(e)}"
+    
+    def _get_balance(self, base_url: str, args: Dict[str, Any]) -> str:
+        """Get token balances."""
+        address = args.get('address')
+        
+        try:
+            response = requests.get(
+                f"{base_url}/v2/addresses/{address}",
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                result = f"Balances for {address}:\n\n"
+                
+                # Native token balance
+                coin_balance = data.get('coin_balance', '0')
+                result += f"Native Token: {coin_balance} wei\n"
+                
+                # ERC-20 tokens
+                if 'token_balances' in data:
+                    result += f"\nERC-20 Tokens:\n"
+                    for token in data['token_balances']:
+                        token_info = token.get('token', {})
+                        result += f"- {token_info.get('name', 'Unknown')}: {token.get('value', '0')}\n"
+                
+                return result
+            else:
+                return f"Error fetching balance: HTTP {response.status_code}"
+                
+        except Exception as e:
+            return f"Error fetching balance: {str(e)}"
+    
+    def _get_token_info(self, base_url: str, args: Dict[str, Any]) -> str:
+        """Get token information."""
+        token_address = args.get('tokenAddress')
+        
+        try:
+            response = requests.get(
+                f"{base_url}/v2/tokens/{token_address}",
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                result = f"Token Information:\n\n"
+                result += f"Name: {data.get('name', 'Unknown')}\n"
+                result += f"Symbol: {data.get('symbol', 'Unknown')}\n"
+                result += f"Decimals: {data.get('decimals', 'Unknown')}\n"
+                result += f"Total Supply: {data.get('total_supply', 'Unknown')}\n"
+                result += f"Type: {data.get('type', 'Unknown')}\n"
+                result += f"Address: {data.get('address', token_address)}\n"
+                
+                return result
+            else:
+                return f"Error fetching token info: HTTP {response.status_code}"
+                
+        except Exception as e:
+            return f"Error fetching token info: {str(e)}"
+    
+    def get_tools_for_server(self, server_type: str) -> List[Dict[str, Any]]:
+        """
+        Get tool definitions for a specific MCP server.
+        
+        Args:
+            server_type: Type of MCP server (e.g., 'blockscout')
+            
+        Returns:
+            List of tool definitions
+        """
+        if server_type == 'blockscout':
+            return self.get_blockscout_tools()
+        else:
+            return []
+    
+    def execute_tool(self, server_type: str, tool_name: str, arguments: Dict[str, Any]) -> str:
+        """
+        Execute a tool from a specific MCP server.
+        
+        Args:
+            server_type: Type of MCP server
+            tool_name: Name of the tool
+            arguments: Tool arguments
+            
+        Returns:
+            Tool execution result
+        """
+        if server_type == 'blockscout':
+            return self.execute_blockscout_tool(tool_name, arguments)
+        else:
+            return f"Unknown MCP server type: {server_type}"
+
+
+if __name__ == "__main__":
+    # Test the MCP client
+    client = MCPClient()
+    
+    print("\n🔌 Testing MCP Client:\n")
+    
+    # Get Blockscout tools
+    tools = client.get_blockscout_tools()
+    print(f"Blockscout tools: {len(tools)}")
+    for tool in tools:
+        print(f"  - {tool['function']['name']}: {tool['function']['description']}")
+    
+    print("\n✅ MCP Client initialized successfully!")

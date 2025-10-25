@@ -18,7 +18,6 @@ function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/app" element={<AppPage />} />
-              <Route path="/workflow/new" element={<WorkflowBuilderPage />} />
               <Route path="/workflow/:id" element={<WorkflowBuilderPage />} />
             </Routes>
           </BrowserRouter>

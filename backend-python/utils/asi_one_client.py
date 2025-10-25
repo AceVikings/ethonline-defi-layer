@@ -303,6 +303,82 @@ in 2-3 sentences. Focus on the user's goal and the steps taken."""
             print(f"Error explaining workflow: {e}")
             return "This workflow automates your DeFi operations."
     
+    def query_with_mcp_tools(self, 
+                             prompt: str, 
+                             mcp_tools: list = None,
+                             context: str = None,
+                             system_prompt: str = None,
+                             temperature: float = 0.7,
+                             max_tokens: int = 500) -> Dict[str, Any]:
+        """
+        Query ASI:One with MCP tools available for function calling.
+        
+        Args:
+            prompt: User's query/prompt
+            mcp_tools: List of MCP tool definitions in OpenAI function calling format
+            context: Additional context (e.g., previous workflow results)
+            system_prompt: System instructions for the AI
+            temperature: Sampling temperature (0-1)
+            max_tokens: Maximum tokens in response
+            
+        Returns:
+            Dictionary with response text and any tool calls made
+        """
+        
+        if system_prompt is None:
+            system_prompt = "You are a helpful DeFi analysis assistant with access to blockchain data tools."
+        
+        messages = [
+            {"role": "system", "content": system_prompt}
+        ]
+        
+        if context:
+            messages.append({
+                "role": "system", 
+                "content": f"Context from previous operations:\n{context}"
+            })
+        
+        messages.append({"role": "user", "content": prompt})
+        
+        request_body = {
+            "model": "asi1-mini",
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens
+        }
+        
+        # Add tools if provided
+        if mcp_tools and len(mcp_tools) > 0:
+            request_body["tools"] = mcp_tools
+            request_body["tool_choice"] = "auto"  # Let AI decide when to use tools
+        
+        try:
+            response = requests.post(
+                f"{self.base_url}/chat/completions",
+                headers=self.headers,
+                json=request_body,
+                timeout=30
+            )
+            
+            response.raise_for_status()
+            result = response.json()
+            
+            message = result['choices'][0]['message']
+            
+            return {
+                "content": message.get('content', ''),
+                "tool_calls": message.get('tool_calls', []),
+                "finish_reason": result['choices'][0].get('finish_reason', 'stop')
+            }
+            
+        except Exception as e:
+            print(f"Error querying ASI:One with MCP tools: {e}")
+            return {
+                "content": "I apologize, but I encountered an error processing your request.",
+                "tool_calls": [],
+                "finish_reason": "error"
+            }
+    
     def _fallback_intent_classification(self, query: str) -> Tuple[str, str]:
         """Fallback intent classification using simple keyword matching."""
         query_lower = query.lower()

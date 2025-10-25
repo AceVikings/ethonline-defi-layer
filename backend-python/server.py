@@ -20,6 +20,7 @@ sys.path.append(str(Path(__file__).parent))
 from metta.knowledge import get_metta_instance
 from metta.defi_rag import DeFiWorkflowRAG
 from utils.asi_one_client import ASIOneClient
+from utils.mcp_client import MCPClient
 
 # Load environment variables
 load_dotenv()
@@ -69,6 +70,9 @@ rag = DeFiWorkflowRAG(metta)
 
 print("🤖 Initializing ASI:One Client...")
 asi_client = ASIOneClient()
+
+print("🔌 Initializing MCP Client...")
+mcp_client = MCPClient()
 
 print(f"""
 ✅ Flask Server initialized!
@@ -741,6 +745,128 @@ def get_default_config(base_type, full_type=""):
     Kept for backwards compatibility.
     """
     return rag.get_node_config(base_type)
+
+
+# ==================== MCP Endpoints ====================
+
+@app.route('/api/mcp/tools', methods=['POST'])
+def get_mcp_tools():
+    """
+    Get MCP tool definitions for the specified servers.
+    
+    Request body:
+    {
+        "servers": ["blockscout", "other-server"]
+    }
+    
+    Response:
+    {
+        "success": true,
+        "tools": [
+            {
+                "type": "function",
+                "function": {
+                    "name": "blockscout_get_transactions",
+                    "description": "...",
+                    "parameters": {...}
+                }
+            },
+            ...
+        ]
+    }
+    """
+    try:
+        data = request.get_json()
+        servers = data.get('servers', [])
+        
+        if not servers:
+            return jsonify({
+                "success": False,
+                "error": "No servers specified"
+            }), 400
+        
+        print(f"🔌 Getting MCP tools for servers: {servers}")
+        
+        all_tools = []
+        
+        for server_type in servers:
+            try:
+                tools = mcp_client.get_tools_for_server(server_type)
+                all_tools.extend(tools)
+                print(f"   ✓ Loaded {len(tools)} tools from {server_type}")
+            except Exception as e:
+                print(f"   ✗ Error loading tools from {server_type}: {e}")
+        
+        print(f"✅ Total MCP tools loaded: {len(all_tools)}")
+        
+        return jsonify({
+            "success": True,
+            "tools": all_tools
+        })
+        
+    except Exception as e:
+        print(f"❌ MCP tools error: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/mcp/execute', methods=['POST'])
+def execute_mcp_tool():
+    """
+    Execute an MCP tool.
+    
+    Request body:
+    {
+        "server": "blockscout",
+        "tool": "blockscout_get_transactions",
+        "arguments": {
+            "address": "0x...",
+            "chainId": "8453",
+            "limit": 10
+        }
+    }
+    
+    Response:
+    {
+        "success": true,
+        "result": {...}
+    }
+    """
+    try:
+        data = request.get_json()
+        server_type = data.get('server', '')
+        tool_name = data.get('tool', '')
+        arguments = data.get('arguments', {})
+        
+        if not server_type or not tool_name:
+            return jsonify({
+                "success": False,
+                "error": "Server and tool name are required"
+            }), 400
+        
+        print(f"🔌 Executing MCP tool: {tool_name} on {server_type}")
+        print(f"   Arguments: {arguments}")
+        
+        result = mcp_client.execute_tool(server_type, tool_name, arguments)
+        
+        print(f"✅ MCP tool executed successfully")
+        
+        return jsonify({
+            "success": True,
+            "result": result
+        })
+        
+    except Exception as e:
+        print(f"❌ MCP execution error: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+# ==================== End MCP Endpoints ====================
 
 
 if __name__ == '__main__':

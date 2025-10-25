@@ -347,7 +347,7 @@ async function executeNode(node, nodeMap, edgeMap, executionSteps, pkpInfo, exec
         break;
         
       case 'ai':
-        result = await executeAINode(node, pkpInfo, previousOutputs);
+        result = await executeAINode(node, pkpInfo, previousOutputs, nodeMap, edgeMap);
         console.log(`│  ✓ AI executed:`, result);
         break;
         
@@ -847,7 +847,7 @@ async function executeConditionNode(node, pkpInfo) {
   };
 }
 
-async function executeAINode(node, pkpInfo, previousOutputs = []) {
+async function executeAINode(node, pkpInfo, previousOutputs = [], nodeMap = new Map(), edgeMap = new Map()) {
   const config = node.config || {};
   
   if (!config.prompt) {
@@ -858,6 +858,41 @@ async function executeAINode(node, pkpInfo, previousOutputs = []) {
   console.log('   [AI/ASI:One] Previous outputs:', previousOutputs);
   
   try {
+    // Detect MCP connections (incoming edges with targetHandle = 'mcp-input')
+    const incomingEdges = Array.from(edgeMap.values()).flat().filter(edge => edge.to === node.id);
+    const mcpEdges = incomingEdges.filter(edge => edge.targetHandle === 'mcp-input');
+    const mcpNodes = mcpEdges.map(edge => nodeMap.get(edge.from)).filter(n => n && n.type === 'mcp');
+    
+    console.log(`   [AI/ASI:One] Incoming edges:`, JSON.stringify(incomingEdges, null, 2));
+    console.log(`   [AI/ASI:One] MCP edges (targetHandle='mcp-input'):`, JSON.stringify(mcpEdges, null, 2));
+    console.log(`   [AI/ASI:One] Found ${mcpNodes.length} MCP connections`);
+    
+    // Prepare MCP tools if any MCP nodes are connected
+    let mcpTools = [];
+    let mcpServers = [];
+    
+    if (mcpNodes.length > 0) {
+      // Call Python backend to get MCP tools
+      const mcpServerTypes = mcpNodes.map(n => n.config?.mcpServer).filter(Boolean);
+      console.log('   [AI/ASI:One] MCP servers:', mcpServerTypes);
+      
+      try {
+        const mcpResponse = await fetch(`http://localhost:${process.env.FLASK_PORT || 8080}/api/mcp/tools`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ servers: mcpServerTypes })
+        });
+        
+        if (mcpResponse.ok) {
+          const mcpData = await mcpResponse.json();
+          mcpTools = mcpData.tools || [];
+          console.log(`   [AI/ASI:One] Loaded ${mcpTools.length} MCP tools`);
+        }
+      } catch (err) {
+        console.warn('   [AI/ASI:One] Could not load MCP tools:', err.message);
+      }
+    }
+    
     // Prepare context from previous outputs
     let contextInfo = '';
     if (previousOutputs.length > 0) {
@@ -867,6 +902,41 @@ async function executeAINode(node, pkpInfo, previousOutputs = []) {
       });
     }
     
+    // Build system prompt based on available tools
+    let systemPrompt = config.systemPrompt || 'You are a helpful DeFi assistant that analyzes blockchain data and provides insights.';
+    
+    if (mcpTools.length > 0) {
+      // List available tool names
+      const toolNames = mcpTools.map(t => t.function?.name || 'unknown').join(', ');
+      systemPrompt += `\n\nYou have access to the following MCP tools that you can call when needed: ${toolNames}. Use these tools to answer questions about blockchain data, transactions, balances, and token information. Always use these tools when asked about specific blockchain data rather than making up information.`;
+    } else {
+      systemPrompt += '\n\nYou do NOT have access to any MCP tools or external data sources in this workflow. If asked about specific blockchain data, transactions, or balances, inform the user that you need an MCP node (like Blockscout) to be connected to access that information. Do not make up or hallucinate tool names or capabilities.';
+    }
+    
+    // Build request body
+    const requestBody = {
+      model: 'asi1-mini',
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt
+        },
+        {
+          role: 'user',
+          content: config.prompt + contextInfo
+        }
+      ],
+      temperature: config.temperature || 0.7,
+      max_tokens: config.maxTokens || 500
+    };
+    
+    // Add MCP tools if available
+    if (mcpTools.length > 0) {
+      requestBody.tools = mcpTools;
+      requestBody.tool_choice = 'auto';
+      console.log('   [AI/ASI:One] Tool calling enabled with', mcpTools.length, 'tools');
+    }
+    
     // Call ASI:One API
     const response = await fetch('https://api.asi1.ai/v1/chat/completions', {
       method: 'POST',
@@ -874,21 +944,7 @@ async function executeAINode(node, pkpInfo, previousOutputs = []) {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer sk_c8d385c761d845689e9aa5dd2ab325024ec3a092ccc44103b6cacacae024b4b7'
       },
-      body: JSON.stringify({
-        model: 'asi1-mini',
-        messages: [
-          {
-            role: 'system',
-            content: config.systemPrompt || 'You are a helpful DeFi assistant that analyzes blockchain data and provides insights.'
-          },
-          {
-            role: 'user',
-            content: config.prompt + contextInfo
-          }
-        ],
-        temperature: config.temperature || 0.7,
-        max_tokens: config.maxTokens || 500
-      })
+      body: JSON.stringify(requestBody)
     });
     
     if (!response.ok) {
@@ -896,18 +952,110 @@ async function executeAINode(node, pkpInfo, previousOutputs = []) {
     }
     
     const data = await response.json();
-    const aiResponse = data.choices?.[0]?.message?.content || 'No response from AI';
+    const message = data.choices?.[0]?.message;
+    const aiResponse = message?.content || '';
+    const toolCalls = message?.tool_calls || [];
     
-    console.log('   [AI/ASI:One] Response:', aiResponse);
+    console.log('   [AI/ASI:One] Initial response:', aiResponse);
+    console.log('   [AI/ASI:One] Tool calls requested:', toolCalls.length);
+    
+    // Execute any tool calls
+    let finalResponse = aiResponse;
+    if (toolCalls.length > 0 && mcpNodes.length > 0) {
+      const toolResults = [];
+      
+      for (const toolCall of toolCalls) {
+        const toolName = toolCall.function.name;
+        const toolArgs = JSON.parse(toolCall.function.arguments || '{}');
+        
+        console.log(`   [AI/ASI:One] Executing tool: ${toolName}`, toolArgs);
+        
+        try {
+          // Call Python backend to execute MCP tool
+          const toolResponse = await fetch(`http://localhost:${process.env.FLASK_PORT || 8080}/api/mcp/execute`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              server: mcpNodes[0].config?.mcpServer || 'blockscout',
+              tool: toolName,
+              arguments: toolArgs
+            })
+          });
+          
+          if (toolResponse.ok) {
+            const toolData = await toolResponse.json();
+            toolResults.push({
+              tool: toolName,
+              result: toolData.result
+            });
+            console.log(`   [AI/ASI:One] Tool result:`, toolData.result);
+          }
+        } catch (err) {
+          console.error(`   [AI/ASI:One] Tool execution error:`, err.message);
+          toolResults.push({
+            tool: toolName,
+            error: err.message
+          });
+        }
+      }
+      
+      // If we have tool results, send them back to AI for final response
+      if (toolResults.length > 0) {
+        const toolResultsText = toolResults.map(tr => 
+          `${tr.tool}: ${tr.result || tr.error}`
+        ).join('\n\n');
+        
+        const finalRequest = {
+          model: 'asi1-mini',
+          messages: [
+            {
+              role: 'system',
+              content: config.systemPrompt || 'You are a helpful DeFi assistant that analyzes blockchain data and provides insights.'
+            },
+            {
+              role: 'user',
+              content: config.prompt + contextInfo
+            },
+            {
+              role: 'assistant',
+              content: aiResponse
+            },
+            {
+              role: 'user',
+              content: `Here are the results from the tools you requested:\n\n${toolResultsText}\n\nPlease provide your final analysis.`
+            }
+          ],
+          temperature: config.temperature || 0.7,
+          max_tokens: config.maxTokens || 500
+        };
+        
+        const finalResponseData = await fetch('https://api.asi1.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer sk_c8d385c761d845689e9aa5dd2ab325024ec3a092ccc44103b6cacacae024b4b7'
+          },
+          body: JSON.stringify(finalRequest)
+        });
+        
+        if (finalResponseData.ok) {
+          const finalData = await finalResponseData.json();
+          finalResponse = finalData.choices?.[0]?.message?.content || aiResponse;
+          console.log('   [AI/ASI:One] Final response with tool results:', finalResponse);
+        }
+      }
+    }
     
     return {
       success: true,
       message: 'AI analysis completed',
       prompt: config.prompt,
-      response: aiResponse,
+      response: finalResponse,
       model: 'asi1-mini',
+      mcpToolsUsed: toolCalls.length,
       output: {
-        response: aiResponse,
+        response: finalResponse,
+        toolCallsMade: toolCalls.length,
         timestamp: new Date().toISOString()
       }
     };
@@ -928,7 +1076,22 @@ async function executeMCPNode(node, pkpInfo, previousOutputs = []) {
   console.log('   [MCP] Tool parameters:', config.parameters);
   console.log('   [MCP] Previous outputs:', previousOutputs);
   
+  // NOTE: MCP nodes should ideally be executed through a uAgent deployed on Agentverse
+  // For now, we'll use direct API calls, but for production, deploy as a uAgent:
+  // 1. Create an agent with MCP client (see backend-python/agents/mcp_agent.py example)
+  // 2. Deploy to Agentverse with mailbox enabled
+  // 3. Send messages to the agent address with the tool and parameters
+  // 4. Receive results through the agent's response
+  
   try {
+    // Check if there's an agent address configured for this MCP server
+    if (config.agentAddress) {
+      return await executeMCPThroughAgent(config, pkpInfo, previousOutputs);
+    }
+    
+    // Fallback to direct execution for testing/development
+    console.log('   [MCP] WARNING: Using direct execution. Deploy a uAgent for production use.');
+    
     // For Blockscout MCP integration
     if (config.mcpServer === 'blockscout') {
       return await executeBlockscoutMCP(config, pkpInfo, previousOutputs);
@@ -940,6 +1103,64 @@ async function executeMCPNode(node, pkpInfo, previousOutputs = []) {
   } catch (error) {
     console.error('   [MCP] Error:', error);
     throw new Error(`MCP node execution failed: ${error.message}`);
+  }
+}
+
+async function executeMCPThroughAgent(config, pkpInfo, previousOutputs) {
+  const { agentAddress, tool, parameters = {} } = config;
+  
+  console.log('   [MCP Agent] Sending request to agent:', agentAddress);
+  
+  // Prepare the message for the agent
+  const message = {
+    tool,
+    parameters: {
+      ...parameters,
+      // Auto-fill address if not provided
+      address: parameters.address || pkpInfo.ethAddress,
+    },
+    context: previousOutputs.length > 0 ? previousOutputs : undefined,
+  };
+  
+  try {
+    // Send message to the agent via Agentverse
+    // This requires the agent to be deployed and listening
+    const response = await fetch(`https://agentverse.ai/v1/agents/${agentAddress}/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Add Agentverse API key if needed
+      },
+      body: JSON.stringify({
+        type: 'mcp_request',
+        payload: message,
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Agent communication failed: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    
+    console.log('   [MCP Agent] Received response:', result);
+    
+    return {
+      success: true,
+      message: 'MCP tool executed via agent',
+      tool,
+      agentAddress,
+      data: result,
+      output: {
+        tool,
+        agentAddress,
+        result: result.data || result,
+        timestamp: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('   [MCP Agent] Error:', error);
+    throw new Error(`Failed to communicate with MCP agent: ${error.message}`);
   }
 }
 

@@ -15,6 +15,8 @@ const edgeSchema = new mongoose.Schema({
   id: String,
   from: String,
   to: String,
+  sourceHandle: String,
+  targetHandle: String,
 }, { _id: false });
 
 const workflowSchema = new mongoose.Schema({
