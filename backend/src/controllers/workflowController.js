@@ -8,6 +8,7 @@ import {
   getUniswapSwapAbilityClient,
   getERC20ApprovalAbilityClient,
 } from '../config/vincent.js';
+import { wrapETH, getWETHBalance } from '../utils/wethWrapper.js';
 
 export const getWorkflows = async (req, res) => {
   try {
@@ -440,10 +441,59 @@ async function executeSwapNode(node, pkpInfo) {
     console.log(`     From: ${config.fromToken} → ${normalizedFromToken}`);
     console.log(`     To: ${config.toToken} → ${normalizedToToken}`);
     
+    // Check if we need to wrap ETH to WETH
+    console.log(`   → Checking if wrapping needed...`);
+    console.log(`     config.fromToken: ${config.fromToken}`);
+    console.log(`     normalizedFromToken (WETH): ${normalizedFromToken}`);
+    
+    const isNativeETH = config.fromToken.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+    const isWETH = normalizedFromToken.toLowerCase() !== config.fromToken.toLowerCase();
+    
+    console.log(`     isNativeETH: ${isNativeETH}`);
+    console.log(`     isWETH (needs wrapping): ${isWETH}`);
+    
+    let wrapTxHash = null;
+    
+    // Wrap if user selected native ETH OR if they selected WETH (which requires wrapping)
+    if (isNativeETH || isWETH) {
+      console.log(`   → Step 1: Wrapping ETH to WETH...`);
+      console.log(`     Amount: ${config.amount} ETH`);
+      
+      try {
+        const wrapResult = await wrapETH({
+          chainName: config.chain,
+          amount: config.amount.toString(),
+          userPkpAddress: delegatorPkpEthAddress,
+        });
+        
+        if (!wrapResult.success) {
+          throw new Error(`ETH wrapping failed: ${wrapResult.error || 'Unknown error'}`);
+        }
+        
+        wrapTxHash = wrapResult.txHash;
+        console.log(`   ✓ ETH wrapped successfully: ${wrapTxHash}`);
+        console.log(`     WETH address: ${wrapResult.wethAddress}`);
+        
+        // Check WETH balance after wrapping
+        const balanceCheck = await getWETHBalance({
+          chainName: config.chain,
+          userPkpAddress: delegatorPkpEthAddress,
+        });
+        
+        if (balanceCheck.success) {
+          console.log(`     WETH balance: ${balanceCheck.balance} WETH`);
+        }
+      } catch (error) {
+        console.error(`   ✗ ETH wrapping failed:`, error.message);
+        throw new Error(`Failed to wrap ETH before swap: ${error.message}`);
+      }
+    }
+    
     // Convert slippage percentage to basis points (1% = 100 basis points)
     const slippageBps = Math.round((parseFloat(config.slippage) || 0.5) * 100);
     
-    console.log(`   → Step 1: Generating signed Uniswap quote...`);
+    const quoteStepNumber = isNativeETH ? 2 : 1;
+    console.log(`   → Step ${quoteStepNumber}: Generating signed Uniswap quote...`);
     
     // Generate signed quote using Vincent SDK
     const signedUniswapQuote = await generateSignedUniswapQuote({
@@ -457,7 +507,9 @@ async function executeSwapNode(node, pkpInfo) {
     
     const uniswapRouterAddress = signedUniswapQuote.quote.to;
     console.log(`   ✓ Quote generated: ${signedUniswapQuote.quote.amountOut} expected`);
-    console.log(`   → Step 2: Checking ERC20 approval...`);
+    
+    const approvalStepNumber = isNativeETH ? 3 : 2;
+    console.log(`   → Step ${approvalStepNumber}: Checking ERC20 approval...`);
     
     // Check and approve ERC20 if needed
     const erc20ApprovalClient = getERC20ApprovalAbilityClient();
@@ -523,7 +575,8 @@ async function executeSwapNode(node, pkpInfo) {
       console.log(`   ✓ Sufficient allowance already exists`);
     }
     
-    console.log(`   → Step 3: Executing Uniswap swap...`);
+    const swapStepNumber = isNativeETH ? 4 : 3;
+    console.log(`   → Step ${swapStepNumber}: Executing Uniswap swap...`);
     
     // Execute the swap
     const uniswapSwapClient = getUniswapSwapAbilityClient();
@@ -557,6 +610,7 @@ async function executeSwapNode(node, pkpInfo) {
       amountIn: config.amount,
       expectedAmountOut: signedUniswapQuote.quote.amountOut,
       slippage: config.slippage || 0.5,
+      wrapTxHash, // null if no wrapping was needed
       approvalTxHash,
       swapTxHash,
       uniswapRouter: uniswapRouterAddress,

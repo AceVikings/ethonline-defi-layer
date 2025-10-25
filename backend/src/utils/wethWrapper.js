@@ -110,16 +110,21 @@ export async function wrapETH({ chainName, amount, userPkpAddress }) {
       }
     );
 
+    // Debug: Log the full result structure
+    console.log('   🔍 Full Vincent result:', JSON.stringify(result, null, 2));
+    console.log('   🔍 result.success:', result.success);
+    console.log('   🔍 result.result:', JSON.stringify(result.result, null, 2));
+
     if (!result.success) {
       throw new Error(result.runtimeError || 'Transaction failed');
     }
 
     console.log('✅ ETH wrapped successfully!');
-    console.log(`   Tx Hash: ${result.result.transactionHash}`);
+    console.log(`   Tx Hash: ${result.result?.transactionHash || result.result}`);
 
     return {
       success: true,
-      txHash: result.result.transactionHash,
+      txHash: result.result?.transactionHash || result.result,
       amount: amount,
       wethAddress: wethAddress,
     };
