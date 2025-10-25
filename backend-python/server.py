@@ -20,7 +20,8 @@ sys.path.append(str(Path(__file__).parent))
 from metta.knowledge import get_metta_instance
 from metta.defi_rag import DeFiWorkflowRAG
 from utils.asi_one_client import ASIOneClient
-from utils.mcp_client import MCPClient
+from utils.mcp_client import MCPClientSync
+import asyncio
 
 # Load environment variables
 load_dotenv()
@@ -72,7 +73,7 @@ print("🤖 Initializing ASI:One Client...")
 asi_client = ASIOneClient()
 
 print("🔌 Initializing MCP Client...")
-mcp_client = MCPClient()
+mcp_client = MCPClientSync()
 
 print(f"""
 ✅ Flask Server initialized!
@@ -849,7 +850,7 @@ def execute_mcp_tool():
         print(f"🔌 Executing MCP tool: {tool_name} on {server_type}")
         print(f"   Arguments: {arguments}")
         
-        result = mcp_client.execute_tool(server_type, tool_name, arguments)
+        result = mcp_client.execute_tool(tool_name, arguments)
         
         print(f"✅ MCP tool executed successfully")
         
