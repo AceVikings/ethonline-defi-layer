@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { handleAuthCallback } from '../lib/vincentAuth';
 import { useAuth } from '../contexts/AuthContext';
@@ -6,21 +6,36 @@ import { useAuth } from '../contexts/AuthContext';
 export default function AuthCallback() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const processedRef = useRef(false);
 
   useEffect(() => {
+    // Prevent double execution in React StrictMode
+    if (processedRef.current) {
+      return;
+    }
+    processedRef.current = true;
+
     const processCallback = async () => {
       try {
-        const { jwt } = handleAuthCallback();
+        console.log('🔍 Processing auth callback...');
+        console.log('📍 Current URL:', window.location.href);
+        console.log('🔑 URL params:', window.location.search);
+        
+        const { jwt } = await handleAuthCallback();
+        console.log('✅ JWT extracted successfully');
+        
         await login(jwt);
+        console.log('✅ Login successful, redirecting to /app');
+        
         navigate('/app');
       } catch (error) {
-        console.error('Authentication failed:', error);
+        console.error('❌ Authentication failed:', error);
         navigate('/');
       }
     };
 
     processCallback();
-  }, [login, navigate]);
+  }, []); // Empty dependency array - only run once
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-50">

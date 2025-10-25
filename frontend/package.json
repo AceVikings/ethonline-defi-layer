@@ -12,6 +12,7 @@
   "dependencies": {
     "@lit-protocol/vincent-app-sdk": "^2.2.3",
     "@tailwindcss/vite": "^4.1.16",
+    "@xyflow/react": "^12.9.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.4",

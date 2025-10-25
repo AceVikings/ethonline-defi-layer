@@ -79,10 +79,21 @@ class ApiClient {
     });
   }
 
+  async patchWorkflow(id: string, data: any) {
+    return this.request<{ success: boolean; workflow: any }>(`/api/workflows/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
   async deleteWorkflow(id: string) {
     return this.request<{ success: boolean; message: string }>(`/api/workflows/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  async getAllExecutions() {
+    return this.request<{ success: boolean; executions: any[] }>('/api/workflows/executions');
   }
 
   async getExecutionHistory(workflowId: string) {

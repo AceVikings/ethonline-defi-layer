@@ -36,7 +36,7 @@ const executionHistorySchema = new mongoose.Schema({
     type: Date,
   },
   nodeResults: [nodeResultSchema],
-  errors: [String],
+  errorMessages: [String],
   gasUsed: String,
   costUSD: Number,
 }, {
