@@ -18,6 +18,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { apiClient } from '../lib/apiClient';
+import { POPULAR_TOKENS } from '../config/tokens';
 import { showToast } from '../lib/toast';
 import { getTokensForChain, findTokenByAddress } from '../config/tokens';
 
@@ -727,16 +728,80 @@ const AaveConfig = ({ config, onUpdate }: { config: any; onUpdate: (config: any)
 };
 
 const TransferConfig = ({ config, onUpdate }: { config: any; onUpdate: (config: any) => void }) => {
+  const [selectedChain, setSelectedChain] = useState(config.chain || 'basesepolia');
+  const [selectedToken, setSelectedToken] = useState(config.token || '');
+
+  const chains = [
+    { id: 'basesepolia', name: 'Base Sepolia' },
+    { id: 'sepolia', name: 'Sepolia' },
+  ];
+
+  const tokens = POPULAR_TOKENS[selectedChain as keyof typeof POPULAR_TOKENS] || [];
+
+  const handleChainChange = (chain: string) => {
+    setSelectedChain(chain);
+    setSelectedToken(''); // Reset token when chain changes
+    onUpdate({ ...config, chain, token: '' });
+  };
+
+  const handleTokenChange = (tokenAddress: string) => {
+    setSelectedToken(tokenAddress);
+    const token = tokens.find(t => t.address === tokenAddress);
+    onUpdate({ 
+      ...config, 
+      token: tokenAddress,
+      tokenSymbol: token?.symbol,
+      tokenDecimals: token?.decimals
+    });
+  };
+
   return (
     <div className="space-y-3">
       <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-2">Chain</label>
+        <select
+          value={selectedChain}
+          onChange={(e) => handleChainChange(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
+        >
+          {chains.map(chain => (
+            <option key={chain.id} value={chain.id}>{chain.name}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
         <label className="block text-xs font-semibold text-gray-700 mb-2">Token</label>
+        <select
+          value={selectedToken}
+          onChange={(e) => handleTokenChange(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
+        >
+          <option value="">Select a token</option>
+          {tokens.map(token => (
+            <option key={token.address} value={token.address}>
+              {token.symbol} - {token.name}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-gray-500">
+          Or enter custom token address below
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-2">
+          Custom Token Address (optional)
+        </label>
         <input
           type="text"
-          value={config.token || ''}
-          onChange={(e) => onUpdate({ ...config, token: e.target.value })}
-          placeholder="e.g., USDC, ETH"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
+          value={selectedToken}
+          onChange={(e) => {
+            setSelectedToken(e.target.value);
+            onUpdate({ ...config, token: e.target.value });
+          }}
+          placeholder="0x... or use dropdown above"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none font-mono"
         />
       </div>
       
@@ -760,7 +825,22 @@ const TransferConfig = ({ config, onUpdate }: { config: any; onUpdate: (config: 
           placeholder="0.00"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
         />
+        <p className="mt-1 text-xs text-gray-500">
+          {selectedToken && tokens.find(t => t.address === selectedToken)
+            ? `Amount in ${tokens.find(t => t.address === selectedToken)?.symbol}`
+            : 'Enter amount to transfer'}
+        </p>
       </div>
+
+      {config.token && config.recipient && config.amount && (
+        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+          <p className="text-xs text-green-800">
+            <span className="font-semibold">Preview:</span> Transfer{' '}
+            {config.amount} {config.tokenSymbol || 'tokens'} to{' '}
+            {config.recipient.slice(0, 6)}...{config.recipient.slice(-4)}
+          </p>
+        </div>
+      )}
     </div>
   );
 };
@@ -902,8 +982,8 @@ export default function WorkflowBuilderPage() {
   const { id } = useParams();
   const [workflowName, setWorkflowName] = useState('Untitled Workflow');
   const [workflowDescription, setWorkflowDescription] = useState('');
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [showNodePalette, setShowNodePalette] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);

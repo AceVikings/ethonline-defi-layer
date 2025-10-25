@@ -56,6 +56,22 @@ class ApiClient {
     return this.request<{ success: boolean; user: any }>('/api/auth/profile');
   }
 
+  async getBalances() {
+    return this.request<{ 
+      success: boolean; 
+      address: string;
+      balances: Array<{
+        chainKey: string;
+        chainId: number;
+        chainName: string;
+        balance: string;
+        symbol: string;
+        isTestnet: boolean;
+        error?: string;
+      }>;
+    }>('/api/auth/balances');
+  }
+
   // Workflow endpoints
   async getWorkflows() {
     return this.request<{ success: boolean; workflows: any[] }>('/api/workflows');

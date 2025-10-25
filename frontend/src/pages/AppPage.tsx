@@ -28,6 +28,33 @@ interface ExecutionHistory {
   errorMessages?: string[];
 }
 
+interface ChainBalance {
+  chainKey: string;
+  chainId: number;
+  chainName: string;
+  balance: string;
+  symbol: string;
+  isTestnet: boolean;
+  error?: string;
+}
+
+const EXPLORER_URLS: Record<string, string> = {
+  ethereum: 'https://etherscan.io',
+  polygon: 'https://polygonscan.com',
+  arbitrum: 'https://arbiscan.io',
+  optimism: 'https://optimistic.etherscan.io',
+  base: 'https://basescan.org',
+  bnb: 'https://bscscan.com',
+  avalanche: 'https://snowtrace.io',
+  celo: 'https://explorer.celo.org/mainnet',
+  sepolia: 'https://sepolia.etherscan.io',
+  basesepolia: 'https://sepolia.basescan.org',
+  arbitrumsepolia: 'https://sepolia.arbiscan.io',
+  optimismsepolia: 'https://sepolia-optimism.etherscan.io',
+  avalanchefuji: 'https://testnet.snowtrace.io',
+  polygonmumbai: 'https://mumbai.polygonscan.com',
+};
+
 export default function AppPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -35,6 +62,44 @@ export default function AppPage() {
   const [executions, setExecutions] = useState<ExecutionHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'inactive'>('all');
+  const [balances, setBalances] = useState<ChainBalance[]>([]);
+  const [loadingBalances, setLoadingBalances] = useState(true);
+  const [copiedAddress, setCopiedAddress] = useState(false);
+
+  useEffect(() => {
+    fetchData();
+    fetchBalances();
+  }, []);
+
+  const fetchBalances = async () => {
+    if (!user?.ethAddress) return;
+
+    setLoadingBalances(true);
+    try {
+      const response = await apiClient.getBalances();
+      setBalances(response.balances);
+    } catch (error) {
+      console.error('Failed to fetch balances:', error);
+      showToast.error('Failed to fetch balances');
+    } finally {
+      setLoadingBalances(false);
+    }
+  };
+
+  const copyAddress = () => {
+    if (user?.ethAddress) {
+      navigator.clipboard.writeText(user.ethAddress);
+      setCopiedAddress(true);
+      showToast.success('Address copied to clipboard');
+      setTimeout(() => setCopiedAddress(false), 2000);
+    }
+  };
+
+  const openExplorer = (chainKey: string) => {
+    if (user?.ethAddress && EXPLORER_URLS[chainKey]) {
+      window.open(`${EXPLORER_URLS[chainKey]}/address/${user.ethAddress}`, '_blank');
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -217,6 +282,171 @@ export default function AppPage() {
                 </p>
               </div>
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+            </div>
+          </div>
+
+          {/* Account Information Card - Compact */}
+          <div className="bg-white rounded-xl shadow-md mb-8 overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-6 py-4 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black">Account</h2>
+                    <p className="text-slate-300 text-xs font-mono">
+                      {user?.ethAddress.slice(0, 10)}...{user?.ethAddress.slice(-8)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={copyAddress}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-lg transition text-xs font-semibold"
+                  >
+                    {copiedAddress ? (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Copy
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Balances Grid */}
+            <div className="p-4">
+              {loadingBalances ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                  {[...Array(10)].map((_, i) => (
+                    <div key={i} className="animate-pulse p-3 bg-gray-100 rounded-lg">
+                      <div className="h-3 bg-gray-300 rounded w-2/3 mb-2"></div>
+                      <div className="h-5 bg-gray-300 rounded w-full"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  {/* Mainnets */}
+                  <div className="mb-4">
+                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">
+                      Mainnets
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                      {balances
+                        .filter(b => !b.isTestnet)
+                        .map((balance) => (
+                          <button
+                            key={balance.chainKey}
+                            onClick={() => openExplorer(balance.chainKey)}
+                            className="relative p-3 bg-gradient-to-br from-slate-50 to-slate-100 hover:from-slate-100 hover:to-slate-200 rounded-lg border border-slate-200 hover:border-slate-300 transition text-left group"
+                            title={`View ${balance.chainName} on explorer`}
+                          >
+                            <div className="flex items-start justify-between mb-1">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-slate-700 truncate">
+                                  {balance.chainName}
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  {balance.symbol}
+                                </p>
+                              </div>
+                              <svg className="w-3 h-3 text-slate-400 group-hover:text-slate-600 flex-shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </div>
+                            <p className="text-base font-black text-slate-900 truncate" title={balance.balance}>
+                              {parseFloat(balance.balance).toFixed(4)}
+                            </p>
+                            {parseFloat(balance.balance) === 0 && (
+                              <div className="absolute top-1 right-1">
+                                <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+
+                  {/* Testnets */}
+                  <div>
+                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">
+                      Testnets
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                      {balances
+                        .filter(b => b.isTestnet)
+                        .map((balance) => (
+                          <button
+                            key={balance.chainKey}
+                            onClick={() => openExplorer(balance.chainKey)}
+                            className="relative p-3 bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 rounded-lg border border-blue-200 hover:border-blue-300 transition text-left group"
+                            title={`View ${balance.chainName} on explorer`}
+                          >
+                            <div className="flex items-start justify-between mb-1">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-blue-700 truncate">
+                                  {balance.chainName}
+                                </p>
+                                <p className="text-xs text-blue-600">
+                                  {balance.symbol}
+                                </p>
+                              </div>
+                              <svg className="w-3 h-3 text-blue-400 group-hover:text-blue-600 flex-shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </div>
+                            <p className="text-base font-black text-blue-900 truncate" title={balance.balance}>
+                              {parseFloat(balance.balance).toFixed(4)}
+                            </p>
+                            {parseFloat(balance.balance) === 0 && (
+                              <div className="absolute top-1 right-1">
+                                <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+
+                  {/* Faucet Info */}
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="text-xs text-blue-900 font-semibold mb-1">Need testnet tokens?</p>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-blue-800">
+                          <a href="https://www.alchemy.com/faucets/base-sepolia" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600 font-medium">
+                            Base Sepolia
+                          </a>
+                          <a href="https://www.alchemy.com/faucets/ethereum-sepolia" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600 font-medium">
+                            Sepolia
+                          </a>
+                          <a href="https://faucet.quicknode.com/arbitrum/sepolia" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600 font-medium">
+                            Arbitrum Sepolia
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

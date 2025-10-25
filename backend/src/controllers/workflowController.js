@@ -9,6 +9,7 @@ import {
   getERC20ApprovalAbilityClient,
 } from '../config/vincent.js';
 import { wrapETH, getWETHBalance } from '../utils/wethWrapper.js';
+import { transferNativeToken, transferERC20Token } from '../utils/tokenTransfer.js';
 
 export const getWorkflows = async (req, res) => {
   try {
@@ -642,22 +643,92 @@ async function executeAaveNode(node, pkpInfo) {
 }
 
 async function executeTransferNode(node, pkpInfo) {
-  // TODO: Implement actual token transfer
+  const startTime = Date.now();
   const config = node.config || {};
   
-  if (!config.token || !config.recipient || !config.amount) {
-    throw new Error('Transfer node missing required configuration (token, recipient, amount)');
+  console.log('   [Transfer] Executing token transfer...');
+  console.log(`   Chain: ${config.chain || 'Not specified'}`);
+  console.log(`   Token: ${config.token || 'Not specified'}`);
+  console.log(`   To: ${config.recipient || 'Not specified'}`);
+  console.log(`   Amount: ${config.amount || 'Not specified'}`);
+  
+  // Validate required fields
+  if (!config.chain) {
+    throw new Error('Transfer node missing required configuration: chain');
   }
-  
-  console.log('   [Transfer] Executing transfer:', config);
-  
-  return {
-    success: true,
-    message: 'Transfer executed (stub)',
-    token: config.token,
-    recipient: config.recipient,
-    amount: config.amount,
-  };
+  if (!config.token) {
+    throw new Error('Transfer node missing required configuration: token');
+  }
+  if (!config.recipient) {
+    throw new Error('Transfer node missing required configuration: recipient');
+  }
+  if (!config.amount) {
+    throw new Error('Transfer node missing required configuration: amount');
+  }
+
+  // Validate recipient address format
+  if (!ethers.utils.isAddress(config.recipient)) {
+    throw new Error(`Invalid recipient address: ${config.recipient}`);
+  }
+
+  // Get PKP address
+  const delegatorPkpEthAddress = pkpInfo.ethAddress;
+
+  try {
+    // Determine if this is a native token or ERC20 transfer
+    const isNativeETH = config.token.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' ||
+                        config.token.toLowerCase() === 'eth';
+
+    let transferResult;
+
+    if (isNativeETH) {
+      // Transfer native ETH
+      console.log('   → Transferring native ETH...');
+      
+      transferResult = await transferNativeToken({
+        chainName: config.chain,
+        recipient: config.recipient,
+        amount: config.amount.toString(),
+        userPkpAddress: delegatorPkpEthAddress,
+      });
+    } else {
+      // Transfer ERC20 token
+      console.log('   → Transferring ERC20 token...');
+      
+      // Assume config.token is the token address for ERC20
+      transferResult = await transferERC20Token({
+        chainName: config.chain,
+        tokenAddress: config.token,
+        recipient: config.recipient,
+        amount: config.amount.toString(),
+        userPkpAddress: delegatorPkpEthAddress,
+      });
+    }
+
+    if (!transferResult.success) {
+      throw new Error(transferResult.error || 'Transfer failed');
+    }
+
+    const duration = Date.now() - startTime;
+    console.log(`   ✓ Transfer completed successfully!`);
+    console.log(`   Tx Hash: ${transferResult.txHash}`);
+    console.log(`   Block: ${transferResult.blockNumber}`);
+    console.log(`   Gas Used: ${transferResult.gasUsed}`);
+
+    return {
+      success: true,
+      txHash: transferResult.txHash,
+      recipient: config.recipient,
+      amount: config.amount,
+      token: transferResult.token || config.token,
+      blockNumber: transferResult.blockNumber,
+      gasUsed: transferResult.gasUsed,
+      duration,
+    };
+  } catch (error) {
+    console.error('   ✗ Transfer failed:', error.message);
+    throw new Error(`Transfer execution failed: ${error.message}`);
+  }
 }
 
 async function executeConditionNode(node, pkpInfo) {
@@ -701,3 +772,4 @@ async function executeAINode(node, pkpInfo) {
     response: 'AI response placeholder',
   };
 }
+

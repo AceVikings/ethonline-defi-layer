@@ -7,6 +7,7 @@ import { connectDatabase } from "./config/database.js";
 import { vincentAuthMiddleware } from "./config/vincent.js";
 import authRoutes from "./routes/authRoutes.js";
 import workflowRoutes from "./routes/workflowRoutes.js";
+import asiRoutes from "./routes/asiRoutes.js";
 
 // Get the directory path of the current module
 const __filename = fileURLToPath(import.meta.url);
@@ -30,6 +31,7 @@ app.get("/health", (req, res) => {
 // Routes
 app.use("/api/auth", vincentAuthMiddleware, authRoutes);
 app.use("/api/workflows", vincentAuthMiddleware, workflowRoutes);
+app.use("/api/asi", vincentAuthMiddleware, asiRoutes);
 
 // Error handler
 app.use((err, req, res, next) => {

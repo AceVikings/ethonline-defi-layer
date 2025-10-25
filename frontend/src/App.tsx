@@ -1,10 +1,10 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
-import { CustomToaster } from './lib/toast';
-import LandingPage from './pages/LandingPage';
-import AppPage from './pages/AppPage';
-import AuthCallback from './pages/AuthCallback';
-import WorkflowBuilderPage from './pages/WorkflowBuilderPage';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
+import { CustomToaster } from "./lib/toast";
+import LandingPage from "./pages/LandingPage";
+import AppPage from "./pages/AppPage";
+import AuthCallback from "./pages/AuthCallback";
+import WorkflowBuilderPage from "./pages/WorkflowBuilderPage";
 
 function App() {
   return (
