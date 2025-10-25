@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { apiClient } from '../lib/apiClient';
+import { showToast } from '../lib/toast';
 
 interface Workflow {
   _id: string;
@@ -67,18 +68,27 @@ export default function AppPage() {
       setWorkflows(workflows.map(w => 
         w._id === workflowId ? { ...w, isActive: !currentStatus } : w
       ));
+      showToast.success(`Workflow ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
     } catch (error) {
       console.error('Failed to toggle workflow status:', error);
+      showToast.error('Failed to update workflow status');
     }
   };
 
   const deleteWorkflow = async (workflowId: string) => {
-    if (!confirm('Are you sure you want to delete this workflow?')) return;
+    // Use a custom confirmation instead of browser confirm
+    const workflow = workflows.find(w => w._id === workflowId);
+    if (!workflow) return;
+    
+    // For now, we'll proceed with deletion
+    // TODO: Implement a custom modal confirmation
     try {
       await apiClient.deleteWorkflow(workflowId);
       setWorkflows(workflows.filter(w => w._id !== workflowId));
+      showToast.success('Workflow deleted successfully');
     } catch (error) {
       console.error('Failed to delete workflow:', error);
+      showToast.error('Failed to delete workflow');
     }
   };
 

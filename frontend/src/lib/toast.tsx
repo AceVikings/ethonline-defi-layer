@@ -1,9 +1,9 @@
-import toast, { Toaster, ToastOptions } from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
 
 // Custom toast configuration matching our theme
-const defaultOptions: ToastOptions = {
+const defaultOptions = {
   duration: 4000,
-  position: 'top-right',
+  position: 'top-right' as const,
   style: {
     background: '#fff',
     color: '#1f2937',
@@ -16,7 +16,7 @@ const defaultOptions: ToastOptions = {
   },
 };
 
-const successOptions: ToastOptions = {
+const successOptions = {
   ...defaultOptions,
   icon: '✓',
   style: {
@@ -30,7 +30,7 @@ const successOptions: ToastOptions = {
   },
 };
 
-const errorOptions: ToastOptions = {
+const errorOptions = {
   ...defaultOptions,
   icon: '✕',
   duration: 5000,
@@ -45,7 +45,7 @@ const errorOptions: ToastOptions = {
   },
 };
 
-const warningOptions: ToastOptions = {
+const warningOptions = {
   ...defaultOptions,
   icon: '⚠',
   style: {
@@ -59,7 +59,7 @@ const warningOptions: ToastOptions = {
   },
 };
 
-const infoOptions: ToastOptions = {
+const infoOptions = {
   ...defaultOptions,
   icon: 'ℹ',
   style: {

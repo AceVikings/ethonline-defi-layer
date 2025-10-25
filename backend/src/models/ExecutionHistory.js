@@ -1,14 +1,18 @@
 import mongoose from 'mongoose';
 
-const nodeResultSchema = new mongoose.Schema({
+const executionStepSchema = new mongoose.Schema({
   nodeId: String,
+  nodeType: String,
+  nodeLabel: String,
   status: {
     type: String,
     enum: ['success', 'failed', 'skipped'],
   },
+  startedAt: Date,
+  completedAt: Date,
   output: mongoose.Schema.Types.Mixed,
-  txHash: String,
   error: String,
+  txHash: String,
 }, { _id: false });
 
 const executionHistorySchema = new mongoose.Schema({
@@ -18,6 +22,10 @@ const executionHistorySchema = new mongoose.Schema({
     required: true,
     index: true,
   },
+  workflow: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Workflow',
+  },
   userId: {
     type: String,
     required: true,
@@ -25,7 +33,7 @@ const executionHistorySchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'success', 'failed'],
+    enum: ['pending', 'running', 'completed', 'failed'],
     default: 'pending',
   },
   startedAt: {
@@ -35,8 +43,8 @@ const executionHistorySchema = new mongoose.Schema({
   completedAt: {
     type: Date,
   },
-  nodeResults: [nodeResultSchema],
-  errorMessages: [String],
+  steps: [executionStepSchema],
+  error: String,
   gasUsed: String,
   costUSD: Number,
 }, {

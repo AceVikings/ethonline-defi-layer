@@ -92,6 +92,15 @@ class ApiClient {
     });
   }
 
+  async executeWorkflow(id: string) {
+    return this.request<{ success: boolean; executionId: string; message: string }>(
+      `/api/workflows/${id}/execute`,
+      {
+        method: 'POST',
+      }
+    );
+  }
+
   async getAllExecutions() {
     return this.request<{ success: boolean; executions: any[] }>('/api/workflows/executions');
   }

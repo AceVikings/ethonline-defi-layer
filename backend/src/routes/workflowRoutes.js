@@ -7,15 +7,20 @@ import {
   updateWorkflow,
   deleteWorkflow,
   getExecutionHistory,
+  executeWorkflow,
 } from '../controllers/workflowController.js';
 
 const router = express.Router();
 
+// Specific routes must come BEFORE parametric routes
+router.get('/executions', vincentHandler(getExecutionHistory));
 router.get('/', vincentHandler(getWorkflows));
-router.get('/:id', vincentHandler(getWorkflow));
 router.post('/', vincentHandler(createWorkflow));
-router.put('/:id', vincentHandler(updateWorkflow));
-router.delete('/:id', vincentHandler(deleteWorkflow));
+router.get('/:id', vincentHandler(getWorkflow));
+router.post('/:id/execute', vincentHandler(executeWorkflow));
 router.get('/:workflowId/executions', vincentHandler(getExecutionHistory));
+router.put('/:id', vincentHandler(updateWorkflow));
+router.patch('/:id', vincentHandler(updateWorkflow));
+router.delete('/:id', vincentHandler(deleteWorkflow));
 
 export default router;

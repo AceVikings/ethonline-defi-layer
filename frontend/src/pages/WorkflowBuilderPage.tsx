@@ -18,7 +18,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { apiClient } from '../lib/apiClient';
-import { showToast, CustomToaster } from '../lib/toast';
+import { showToast } from '../lib/toast';
 
 // Custom node component with dynamic handles based on node type
 const CustomNode = ({ data }: any) => {
@@ -140,8 +140,36 @@ const NODE_TYPES = [
 ];
 
 // Configuration Components for each node type
-const TriggerConfig = ({ config, onUpdate }: { config: any; onUpdate: (config: any) => void }) => {
+const TriggerConfig = ({ 
+  config, 
+  onUpdate, 
+  workflowId 
+}: { 
+  config: any; 
+  onUpdate: (config: any) => void;
+  workflowId?: string;
+}) => {
+  const [triggering, setTriggering] = useState(false);
   const triggerType = config.triggerType || 'manual';
+  
+  const handleManualTrigger = async () => {
+    if (!workflowId) {
+      showToast.warning('Please save the workflow before triggering');
+      return;
+    }
+    
+    setTriggering(true);
+    try {
+      const response = await apiClient.executeWorkflow(workflowId);
+      showToast.success('Workflow execution started!');
+      console.log('Execution response:', response);
+    } catch (error: any) {
+      showToast.error(error.message || 'Failed to trigger workflow');
+      console.error('Execution error:', error);
+    } finally {
+      setTriggering(false);
+    }
+  };
   
   return (
     <div className="space-y-3">
@@ -158,6 +186,39 @@ const TriggerConfig = ({ config, onUpdate }: { config: any; onUpdate: (config: a
           <option value="event">Event-based</option>
         </select>
       </div>
+      
+      {triggerType === 'manual' && (
+        <div className="pt-2">
+          <button
+            onClick={handleManualTrigger}
+            disabled={triggering || !workflowId}
+            className="w-full px-4 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-amber-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {triggering ? (
+              <>
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Triggering...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Execute Workflow
+              </>
+            )}
+          </button>
+          {!workflowId && (
+            <p className="text-xs text-amber-600 mt-2 text-center">
+              Save workflow first to enable execution
+            </p>
+          )}
+        </div>
+      )}
       
       {triggerType === 'scheduled' && (
         <div>
@@ -248,19 +309,6 @@ const SwapConfig = ({ config, onUpdate }: { config: any; onUpdate: (config: any)
           max="5"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
         />
-      </div>
-      
-      <div>
-        <label className="block text-xs font-semibold text-gray-700 mb-2">DEX</label>
-        <select
-          value={config.dex || 'uniswap'}
-          onChange={(e) => onUpdate({ ...config, dex: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
-        >
-          <option value="uniswap">Uniswap</option>
-          <option value="sushiswap">Sushiswap</option>
-          <option value="1inch">1inch</option>
-        </select>
       </div>
     </div>
   );
@@ -463,10 +511,20 @@ const AIConfig = ({ config, onUpdate }: { config: any; onUpdate: (config: any) =
 };
 
 // Render appropriate config component based on node type
-const NodeConfigPanel = ({ nodeType, config, onUpdate }: { nodeType: string; config: any; onUpdate: (config: any) => void }) => {
+const NodeConfigPanel = ({ 
+  nodeType, 
+  config, 
+  onUpdate, 
+  workflowId 
+}: { 
+  nodeType: string; 
+  config: any; 
+  onUpdate: (config: any) => void;
+  workflowId?: string;
+}) => {
   switch (nodeType) {
     case 'trigger':
-      return <TriggerConfig config={config} onUpdate={onUpdate} />;
+      return <TriggerConfig config={config} onUpdate={onUpdate} workflowId={workflowId} />;
     case 'swap':
       return <SwapConfig config={config} onUpdate={onUpdate} />;
     case 'aave':
@@ -514,7 +572,10 @@ export default function WorkflowBuilderPage() {
       const flowNodes = workflow.nodes.map((node: any) => ({
         id: node.id,
         type: 'custom',
-        position: { x: node.x || 0, y: node.y || 0 },
+        position: { 
+          x: node.position?.x || 0, 
+          y: node.position?.y || 0 
+        },
         data: {
           label: node.label,
           type: node.type,
@@ -686,7 +747,7 @@ export default function WorkflowBuilderPage() {
 
   const saveWorkflow = async () => {
     if (!workflowName.trim()) {
-      alert('Please enter a workflow name');
+      showToast.warning('Please enter a workflow name');
       return;
     }
 
@@ -697,8 +758,10 @@ export default function WorkflowBuilderPage() {
         id: node.id,
         type: node.data.type,
         label: node.data.label,
-        x: node.position.x,
-        y: node.position.y,
+        position: {
+          x: node.position.x,
+          y: node.position.y,
+        },
         config: node.data.config || {},
       }));
 
@@ -719,14 +782,16 @@ export default function WorkflowBuilderPage() {
 
       if (id && id !== 'new') {
         await apiClient.updateWorkflow(id, workflowData);
+        showToast.success('Workflow updated successfully!');
       } else {
         await apiClient.createWorkflow(workflowData);
+        showToast.success('Workflow created successfully!');
       }
 
       navigate('/app');
     } catch (error) {
       console.error('Failed to save workflow:', error);
-      alert('Failed to save workflow. Please try again.');
+      showToast.error('Failed to save workflow. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -982,6 +1047,7 @@ export default function WorkflowBuilderPage() {
                     nodeType={selectedNode.data.type as string}
                     config={selectedNode.data.config || {}}
                     onUpdate={(newConfig) => updateNodeConfig(selectedNode.id, newConfig)}
+                    workflowId={id !== 'new' ? id : undefined}
                   />
                 </div>
 

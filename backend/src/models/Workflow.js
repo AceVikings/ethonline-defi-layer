@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const nodeSchema = new mongoose.Schema({
   id: String,
   type: String,
+  label: String,
   config: mongoose.Schema.Types.Mixed,
   position: {
     x: Number,
