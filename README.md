@@ -1,524 +1,1045 @@
-# 🌐 DeFi A2A Liquidity Unifier
+# 🌊 DeFlow - Visual DeFi Workflow Automation# 🌐 DeFi A2A Liquidity Unifier
 
-> Cross-chain, AI-driven liquidity aggregation and execution layer built with Hedera, Avail, and Blockscout.
 
----
 
-## 🚀 Overview
+> Node-based DeFi workflow builder powered by LIT Protocol (Vincent SDK) with multi-chain support> Cross-chain, AI-driven liquidity aggregation and execution layer built with Hedera, Avail, and Blockscout.
 
-**DeFi A2A Liquidity Unifier** is a next-generation decentralized finance protocol that unifies fragmented liquidity across multiple chains using **A2A (Agent-to-Agent)** coordination.
 
-- **On-chain:** Hedera smart contracts manage liquidity pools, swaps, and AI agent registration.
-- **Off-chain:** AI Agents run simulations, forecasts, and rebalance strategies, communicating via Avail’s cross-chain data layer.
-- **Blockscout:** Provides analytics, contract visibility, and a query endpoint for our off-chain AI components.
+
+------
+
+
+
+## 🚀 Overview## 🚀 Overview
+
+
+
+**DeFlow** is a visual workflow automation platform for DeFi operations. Build complex strategies using a drag-and-drop interface, then execute them securely across multiple chains using LIT Protocol's Vincent SDK.**DeFi A2A Liquidity Unifier** is a next-generation decentralized finance protocol that unifies fragmented liquidity across multiple chains using **A2A (Agent-to-Agent)** coordination.
+
+
+
+- **Visual Builder:** Node-based workflow canvas built with React Flow- **On-chain:** Hedera smart contracts manage liquidity pools, swaps, and AI agent registration.
+
+- **Multi-Chain:** Execute on Ethereum, Base, Arbitrum, Polygon, Optimism, BNB, Avalanche, Celo- **Off-chain:** AI Agents run simulations, forecasts, and rebalance strategies, communicating via Avail’s cross-chain data layer.
+
+- **Secure Execution:** Powered by LIT Protocol Vincent SDK with PKP (Programmable Key Pairs)- **Blockscout:** Provides analytics, contract visibility, and a query endpoint for our off-chain AI components.
+
+- **Real-Time Monitoring:** Live execution logs and step-by-step debugging
+
+### 🎯 Key Features
 
 ### 🎯 Key Features
 
 - Cross-chain liquidity discovery via Avail Nexus SDK
-- Hedera EVM contracts for pooled swaps and A2A settlement
-- AI Agents performing arbitrage, forecasting, and rebalance strategies
-- Full transparency through Blockscout API integration
 
----
+- **6 Node Types:** Trigger, Swap, Aave, Transfer, Condition, and AI nodes- Hedera EVM contracts for pooled swaps and A2A settlement
 
-## 🧩 System Design
+- **Uniswap V3 Integration:** Multi-hop optimized swaps via Vincent Uniswap Ability- AI Agents performing arbitrage, forecasting, and rebalance strategies
 
-### **Architecture Overview**
+- **Visual Debugging:** Real-time execution logs with per-node status and outputs- Full transparency through Blockscout API integration
 
-```
-                      ┌──────────────────────────┐
-                      │      User Interface      │
-                      │  (React + Next.js App)   │
-                      │   + Vincent Auth Flow    │
-                      └───────────┬──────────────┘
-                                  │ JWT (User Permissions)
-                   ┌──────────────┴──────────────┐
-                   │     Off-Chain Layer (AI)    │
-                   │ ─────────────────────────── │
-                   │  • Agent Coordinator (A2A)  │
-                   │  • Strategy Engine (AI LLM) │
-                   │  • Avail Nexus SDK Adapter  │
-                   └──────────────┬──────────────┘
-                                  │ Execute Strategy Request
-            ┌─────────────────────┴─────────────────────┐
-            │          LIT Protocol (Vincent)           │
-            │  • Validate User Policies                 │
-            │  • PKP Threshold Signing                  │
-            │  • Delegated Transaction Execution        │
-            └─────────────────────┬─────────────────────┘
-                                  │ Signed Transaction
-                 ┌────────────────┴──────────────┐
-                 │        On-Chain Layer         │
-                 │ ───────────────────────────── │
-                 │ Hedera Smart Contracts        │
-                 │   • LiquidityPool.sol         │
-                 │   • AgentRegistry.sol         │
-                 │   • CrossChainBridge.sol      │
-                 └────────────────┬──────────────┘
-                                  │ Transaction Data
-                      ┌───────────┴──────────────┐
-                      │       Blockscout         │
-                      │  Explorer + Analytics    │
-                      └──────────────────────────┘
-                                  │
-                      ┌───────────┴──────────────┐
-                      │      Avail DA Layer      │
-                      │  Cross-Chain Proofs      │
-                      └──────────────────────────┘
-```
+- **Authentication:** Vincent OAuth flow with secure PKP wallet management
 
----
+- **Manual & Automated Triggers:** Execute workflows on-demand or via conditions---
 
-## ⚙️ On-Chain Components
 
-| Contract               | Purpose                                                                 |
-| ---------------------- | ----------------------------------------------------------------------- |
-| `AgentRegistry.sol`    | Registers AI agent addresses, roles, and permissions.                   |
+
+---## 🧩 System Design
+
+
+
+## 🧩 System Architecture### **Architecture Overview**
+
+
+
+``````
+
+┌──────────────────────────┐                      ┌──────────────────────────┐
+
+│   Frontend (React + TS)  │                      │      User Interface      │
+
+│  ┌────────────────────┐  │                      │  (React + Next.js App)   │
+
+│  │  Workflow Builder  │  │                      │   + Vincent Auth Flow    │
+
+│  │   (React Flow)     │  │                      └───────────┬──────────────┘
+
+│  └─────────┬──────────┘  │                                  │ JWT (User Permissions)
+
+│            │              │                   ┌──────────────┴──────────────┐
+
+│  ┌─────────▼──────────┐  │                   │     Off-Chain Layer (AI)    │
+
+│  │  Vincent Auth      │  │                   │ ─────────────────────────── │
+
+│  │  Context & OAuth   │  │                   │  • Agent Coordinator (A2A)  │
+
+│  └────────────────────┘  │                   │  • Strategy Engine (AI LLM) │
+
+└──────────┬───────────────┘                   │  • Avail Nexus SDK Adapter  │
+
+           │ JWT + API Calls                   └──────────────┬──────────────┘
+
+┌──────────▼────────────────┐                                  │ Execute Strategy Request
+
+│  Backend (Node.js + Express)            ┌─────────────────────┴─────────────────────┐
+
+│  ┌─────────────────────┐ │            │          LIT Protocol (Vincent)           │
+
+│  │  Workflow Engine    │ │            │  • Validate User Policies                 │
+
+│  │  • Node Execution   │ │            │  • PKP Threshold Signing                  │
+
+│  │  • History Tracking │ │            │  • Delegated Transaction Execution        │
+
+│  └─────────┬───────────┘ │            └─────────────────────┬─────────────────────┘
+
+│            │              │                                  │ Signed Transaction
+
+│  ┌─────────▼───────────┐ │                 ┌────────────────┴──────────────┐
+
+│  │ Vincent SDK Config │ │                 │        On-Chain Layer         │
+
+│  │ • LIT Node Client  │ │                 │ ───────────────────────────── │
+
+│  │ • Delegatee Signer │ │                 │ Hedera Smart Contracts        │
+
+│  │ • Ability Clients  │ │                 │   • LiquidityPool.sol         │
+
+│  └─────────┬───────────┘ │                 │   • AgentRegistry.sol         │
+
+└────────────┼─────────────┘                 │   • CrossChainBridge.sol      │
+
+             │                 └────────────────┬──────────────┘
+
+┌────────────▼─────────────┐                                  │ Transaction Data
+
+│   LIT Protocol (Vincent) │                      ┌───────────┴──────────────┐
+
+│  ┌────────────────────┐  │                      │       Blockscout         │
+
+│  │ Uniswap Swap       │  │                      │  Explorer + Analytics    │
+
+│  │ ERC20 Approval     │  │                      └──────────────────────────┘
+
+│  │ Aave Operations    │  │                                  │
+
+│  │ Token Transfers    │  │                      ┌───────────┴──────────────┐
+
+│  └─────────┬──────────┘  │                      │      Avail DA Layer      │
+
+│            │ PKP Signing  │                      │  Cross-Chain Proofs      │
+
+└────────────┼─────────────┘                      └──────────────────────────┘
+
+             │```
+
+┌────────────▼─────────────┐
+
+│   Multi-Chain Execution  │---
+
+│  • Ethereum              │
+
+│  • Base, Arbitrum        │## ⚙️ On-Chain Components
+
+│  • Polygon, Optimism     │
+
+│  • BNB, Avalanche, Celo  │| Contract               | Purpose                                                                 |
+
+└──────────────────────────┘| ---------------------- | ----------------------------------------------------------------------- |
+
+```| `AgentRegistry.sol`    | Registers AI agent addresses, roles, and permissions.                   |
+
 | `LiquidityPool.sol`    | Manages token deposits, swaps, and withdrawals on Hedera.               |
-| `CrossChainBridge.sol` | Interfaces with Avail Nexus SDK to sync liquidity states across chains. |
 
----
+---| `CrossChainBridge.sol` | Interfaces with Avail Nexus SDK to sync liquidity states across chains. |
 
-## 🧠 Off-Chain Components
 
-| Component                    | Description                                                                   |
-| ---------------------------- | ----------------------------------------------------------------------------- |
-| **A2A Coordinator**          | A Python/TypeScript service managing AI-to-AI communication and task routing. |
-| **Strategy Engine**          | LLM-based simulation engine generating rebalancing and arbitrage strategies.  |
-| **Vincent Ability Wrapper**  | Backend API service that invokes LIT Protocol Vincent abilities with PKP signing. |
-| **Avail Adapter**            | Handles proof generation and batch submission to Avail.                       |
-| **Blockscout API Connector** | Fetches contract and transaction metadata for analytics and visualization.    |
 
----
+## 📦 Project Structure---
 
-## 🔮 Vincent Integration (LIT Protocol)
 
-**NeuraFlow** uses [Vincent](https://docs.heyvincent.ai/) - LIT Protocol's programmable key pair (PKP) system - to enable **autonomous AI agent execution** with cryptographic guarantees.
 
-### Key Benefits
-- **Trustless Execution**: AI agents sign transactions via decentralized PKPs (no single private key)
-- **Policy Constraints**: User-defined rules enforce what abilities can/cannot do
-- **Cross-Chain**: Single PKP controls addresses on multiple EVM chains
-- **Audit Trail**: All ability invocations logged on-chain via LIT Protocol
+```## 🧠 Off-Chain Components
 
-### ArbitrageExecutor Ability
-Our flagship Vincent ability executes cross-chain arbitrage atomically:
+ethonline-defi-layer/
 
-```typescript
-// AI Agent detects opportunity → calls backend API
-POST /api/abilities/arbitrage
-{
-  "sourceChain": "hedera",
-  "targetChain": "ethereum",
-  "minProfitBps": 50,
-  // ... params
-}
+├── frontend/                 # React + TypeScript + Vite| Component                    | Description                                                                   |
 
-// Backend invokes Vincent ability via LIT SDK
-// → Ability runs in sandboxed Lit Action VM
+│   ├── src/| ---------------------------- | ----------------------------------------------------------------------------- |
+
+│   │   ├── pages/| **A2A Coordinator**          | A Python/TypeScript service managing AI-to-AI communication and task routing. |
+
+│   │   │   ├── LandingPage.tsx| **Strategy Engine**          | LLM-based simulation engine generating rebalancing and arbitrage strategies.  |
+
+│   │   │   ├── WorkflowBuilderPage.tsx  # Main workflow builder| **Vincent Ability Wrapper**  | Backend API service that invokes LIT Protocol Vincent abilities with PKP signing. |
+
+│   │   │   └── AuthCallback.tsx| **Avail Adapter**            | Handles proof generation and batch submission to Avail.                       |
+
+│   │   ├── contexts/| **Blockscout API Connector** | Fetches contract and transaction metadata for analytics and visualization.    |
+
+│   │   │   └── AuthContext.tsx          # Vincent auth state
+
+│   │   ├── lib/---
+
+│   │   │   ├── apiClient.ts             # Backend API calls
+
+│   │   │   └── vincentAuth.ts           # Vincent OAuth## 🔮 Vincent Integration (LIT Protocol)
+
+│   │   └── components/
+
+│   │       └── ProtectedRoute.tsx**NeuraFlow** uses [Vincent](https://docs.heyvincent.ai/) - LIT Protocol's programmable key pair (PKP) system - to enable **autonomous AI agent execution** with cryptographic guarantees.
+
+│   └── package.json
+
+│### Key Benefits
+
+├── backend/                  # Node.js + Express + MongoDB- **Trustless Execution**: AI agents sign transactions via decentralized PKPs (no single private key)
+
+│   ├── src/- **Policy Constraints**: User-defined rules enforce what abilities can/cannot do
+
+│   │   ├── config/- **Cross-Chain**: Single PKP controls addresses on multiple EVM chains
+
+│   │   │   ├── chains.js                # Multi-chain configuration- **Audit Trail**: All ability invocations logged on-chain via LIT Protocol
+
+│   │   │   ├── vincent.js               # Vincent SDK helpers
+
+│   │   │   └── database.js### ArbitrageExecutor Ability
+
+│   │   ├── controllers/Our flagship Vincent ability executes cross-chain arbitrage atomically:
+
+│   │   │   ├── workflowController.js    # Execution engine
+
+│   │   │   └── authController.js```typescript
+
+│   │   ├── models/// AI Agent detects opportunity → calls backend API
+
+│   │   │   ├── Workflow.jsPOST /api/abilities/arbitrage
+
+│   │   │   ├── ExecutionHistory.js{
+
+│   │   │   └── User.js  "sourceChain": "hedera",
+
+│   │   └── routes/  "targetChain": "ethereum",
+
+│   │       ├── workflowRoutes.js  "minProfitBps": 50,
+
+│   │       └── authRoutes.js  // ... params
+
+│   └── package.json}
+
+│
+
+└── README.md// Backend invokes Vincent ability via LIT SDK
+
+```// → Ability runs in sandboxed Lit Action VM
+
 // → PKP signs transactions on both chains
-// → Returns execution result
+
+---// → Returns execution result
+
 ```
+
+## 🎨 Node Types
 
 See [Vincent Integration Plan](./docs/VINCENT_INTEGRATION_PLAN.md) for architecture details.
 
----
+### 1. **Trigger Node** 
 
-## 🤖 AI Agent Architecture
+- **Type:** Entry point (no input handles)---
 
-### **Core Components**
+- **Config:** Manual or automated triggers
 
-Our AI agent system integrates **Google A2A (Agent-to-Agent)**, **Hedera Agent Kit**, and **Core ML** for on-device price prediction:
+- **Output:** Workflow execution signal## 🤖 AI Agent Architecture
 
-```
+
+
+### 2. **Swap Node** ✅ **IMPLEMENTED**### **Core Components**
+
+- **Type:** DeFi operation
+
+- **Config:** Chain, from token, to token, amount, slippage, decimalsOur AI agent system integrates **Google A2A (Agent-to-Agent)**, **Hedera Agent Kit**, and **Core ML** for on-device price prediction:
+
+- **Integration:** Uniswap V3 via Vincent Swap Ability
+
+- **Features:** Multi-hop optimization, automatic approval handling```
+
 ┌─────────────────────────────────────────────────────────┐
-│              Google A2A Orchestrator                    │
-│  (Agent Discovery, Capability Registry, Message Router) │
-└────────────────┬────────────────────────────────────────┘
-                 │
-      ┌──────────┴──────────┐
+
+### 3. **Aave Node**│              Google A2A Orchestrator                    │
+
+- **Type:** DeFi operation│  (Agent Discovery, Capability Registry, Message Router) │
+
+- **Config:** Action (supply/withdraw/borrow/repay), asset, amount, collateral option└────────────────┬────────────────────────────────────────┘
+
+- **Integration:** Ready for Vincent Aave Ability                 │
+
+- **Status:** Stub implementation      ┌──────────┴──────────┐
+
       │                     │
-┌─────▼─────┐         ┌────▼──────┐
-│ Arbitrage │         │ Risk Mgmt │
-│  Agent    │         │  Agent    │
-│ (Python)  │         │ (Python)  │
-└─────┬─────┘         └────┬──────┘
+
+### 4. **Transfer Node**┌─────▼─────┐         ┌────▼──────┐
+
+- **Type:** Token operation│ Arbitrage │         │ Risk Mgmt │
+
+- **Config:** Token address, recipient, amount│  Agent    │         │  Agent    │
+
+- **Integration:** Ready for Vincent ERC20 Transfer Ability│ (Python)  │         │ (Python)  │
+
+- **Status:** Stub implementation└─────┬─────┘         └────┬──────┘
+
       │                    │
-      │   ┌────────────────┴──────────┐
-      │   │                           │
-┌─────▼───▼────┐              ┌──────▼───────┐
-│ Core ML      │              │ Hedera Agent │
-│ Price Model  │              │ Kit (HAK)    │
+
+### 5. **Condition Node**      │   ┌────────────────┴──────────┐
+
+- **Type:** Logic control      │   │                           │
+
+- **Config:** Left value, operator, right value┌─────▼───▼────┐              ┌──────▼───────┐
+
+- **Output:** Two handles (true/false branches)│ Core ML      │              │ Hedera Agent │
+
+- **Status:** Basic evaluation│ Price Model  │              │ Kit (HAK)    │
+
 │ (.mlmodel)   │              │ Plugin       │
-└──────────────┘              └──────┬───────┘
-                                     │
-                              ┌──────▼────────┐
-                              │ Hedera Smart  │
-                              │ Contracts     │
+
+### 6. **AI Node**└──────────────┘              └──────┬───────┘
+
+- **Type:** Agent integration                                     │
+
+- **Config:** System prompt, user prompt template, output format                              ┌──────▼────────┐
+
+- **Integration:** Ready for ASI agent calls                              │ Hedera Smart  │
+
+- **Status:** Stub implementation                              │ Contracts     │
+
                               └───────────────┘
-```
 
-### **Agent Types & Roles**
+---```
 
-| Agent Type          | Purpose                                | A2A Capability                    |
+
+
+## 🔮 Vincent Integration (LIT Protocol)### **Agent Types & Roles**
+
+
+
+DeFlow uses **Vincent SDK** from LIT Protocol to execute DeFi operations securely via PKPs (Programmable Key Pairs).| Agent Type          | Purpose                                | A2A Capability                    |
+
 | ------------------- | -------------------------------------- | --------------------------------- |
-| **Arbitrage Agent** | Detects cross-chain price discrepancies | `detect_arbitrage_opportunity`    |
-| **Risk Agent**      | Monitors pool health, calculates VaR   | `assess_pool_risk`                |
-| **Rebalance Agent** | Optimizes LP positions                 | `suggest_rebalance`               |
-| **Execution Agent** | Bundles and submits transactions       | `execute_strategy`                |
 
----
+### Key Benefits| **Arbitrage Agent** | Detects cross-chain price discrepancies | `detect_arbitrage_opportunity`    |
 
-## 🔄 AI Agent Flow (Step-by-Step)
+- ✅ **Trustless Execution:** Transactions signed via decentralized PKPs| **Risk Agent**      | Monitors pool health, calculates VaR   | `assess_pool_risk`                |
 
-### **Phase 1: Discovery & Registration**
+- ✅ **Policy Constraints:** User-defined spending limits and permissions| **Rebalance Agent** | Optimizes LP positions                 | `suggest_rebalance`               |
 
-1. **Agent Startup**
-   - Each agent boots and registers with Google A2A using capability descriptors
-   - Registers on-chain via `AgentRegistry.sol` (Hedera)
-   - Hedera Agent Kit initializes wallet and contract interfaces
+- ✅ **Multi-Chain:** Single PKP controls addresses across all EVM chains| **Execution Agent** | Bundles and submits transactions       | `execute_strategy`                |
 
-```javascript
-// Example: Agent Registration with Hedera Agent Kit
-const { Client, PrivateKey } = require('@hashgraph/sdk');
+- ✅ **Secure TEE:** All operations run in Trusted Execution Environment
+
+- ✅ **Audit Trail:** Complete execution history with transaction hashes---
+
+
+
+### Uniswap Swap Implementation## 🔄 AI Agent Flow (Step-by-Step)
+
+
+
+```javascript### **Phase 1: Discovery & Registration**
+
+// 1. Generate signed quote using Uniswap Alpha Router
+
+const signedQuote = await generateSignedUniswapQuote({1. **Agent Startup**
+
+  rpcUrl,   - Each agent boots and registers with Google A2A using capability descriptors
+
+  tokenInAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // USDC   - Registers on-chain via `AgentRegistry.sol` (Hedera)
+
+  tokenInAmount: '10',   - Hedera Agent Kit initializes wallet and contract interfaces
+
+  tokenOutAddress: '0x4200000000000000000000000000000000000006', // WETH
+
+  recipient: pkpEthAddress,```javascript
+
+  slippageTolerance: 100, // 1%// Example: Agent Registration with Hedera Agent Kit
+
+});const { Client, PrivateKey } = require('@hashgraph/sdk');
+
 const { HederaLangchainToolkit, coreQueriesPlugin, coreHTSPlugin } = require('hedera-agent-kit');
-const { ChatOpenAI } = require('@langchain/openai');
 
-// Initialize Hedera client (operator account for signing txs)
-const client = Client.forTestnet().setOperator(
-  process.env.HEDERA_ACCOUNT_ID,
-  PrivateKey.fromStringECDSA(process.env.HEDERA_PRIVATE_KEY)
-);
+// 2. Check and execute ERC20 approval if neededconst { ChatOpenAI } = require('@langchain/openai');
 
-// Initialize Hedera Agent Kit with plugins
+const approvalClient = getERC20ApprovalAbilityClient();
+
+await approvalClient.execute({// Initialize Hedera client (operator account for signing txs)
+
+  rpcUrl,const client = Client.forTestnet().setOperator(
+
+  chainId: 8453,  process.env.HEDERA_ACCOUNT_ID,
+
+  spenderAddress: signedQuote.quote.to,  PrivateKey.fromStringECDSA(process.env.HEDERA_PRIVATE_KEY)
+
+  tokenAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',);
+
+  tokenAmount: '10000000', // 10 USDC (6 decimals)
+
+}, { delegatorPkpEthAddress: pkpEthAddress });// Initialize Hedera Agent Kit with plugins
+
 const hederaToolkit = new HederaLangchainToolkit({
-  client,
-  configuration: {
-    mode: AgentMode.AUTONOMOUS, // Auto-execute transactions
-    plugins: [
-      coreQueriesPlugin,  // Account balance, transaction history
-      coreHTSPlugin,      // Token transfers, minting
+
+// 3. Execute swap  client,
+
+const swapClient = getUniswapSwapAbilityClient();  configuration: {
+
+const result = await swapClient.execute({    mode: AgentMode.AUTONOMOUS, // Auto-execute transactions
+
+  rpcUrlForUniswap: rpcUrl,    plugins: [
+
+  signedUniswapQuote      coreQueriesPlugin,  // Account balance, transaction history
+
+}, { delegatorPkpEthAddress: pkpEthAddress });      coreHTSPlugin,      // Token transfers, minting
+
       crossChainLiquidityPlugin  // Our custom plugin!
-    ]
-  }
+
+console.log('Swap TX:', result.result.swapTxHash);    ]
+
+```  }
+
 });
 
+### Supported Chains
+
 // Get tools for LangChain agent
-const tools = hederaToolkit.getTools();
 
-// Initialize LLM (OpenAI, Anthropic, Groq, or local Ollama)
-const llm = new ChatOpenAI({ model: 'gpt-4o-mini' });
-```
+**Mainnets:**const tools = hederaToolkit.getTools();
 
-### **Phase 2: Event Monitoring**
+- ethereum
 
-2. **Listen for Liquidity Events**
+- polygon// Initialize LLM (OpenAI, Anthropic, Groq, or local Ollama)
+
+- arbitrumconst llm = new ChatOpenAI({ model: 'gpt-4o-mini' });
+
+- optimism```
+
+- base
+
+- bnb### **Phase 2: Event Monitoring**
+
+- avalanche
+
+- celo2. **Listen for Liquidity Events**
+
    - Agents subscribe to Avail data blobs containing pool state updates
-   - Blockscout API polls for new `LiquidityAdded` / `Swap` events
-   - Events are normalized and broadcast via A2A message bus
 
-```python
-# Pseudo-code: Event Listener
-async def monitor_liquidity_events():
-    async for event in blockscout_api.stream_events("LiquidityPool"):
+**Testnets:**   - Blockscout API polls for new `LiquidityAdded` / `Swap` events
+
+- sepolia   - Events are normalized and broadcast via A2A message bus
+
+- basesepolia
+
+- arbitrumsepolia```python
+
+- optimismsepolia# Pseudo-code: Event Listener
+
+- avalanchefujiasync def monitor_liquidity_events():
+
+- polygonmumbai    async for event in blockscout_api.stream_events("LiquidityPool"):
+
         msg = {
-            "type": "liquidity_update",
+
+---            "type": "liquidity_update",
+
             "pool": event.pool_address,
-            "reserves": event.reserves,
+
+## 🚀 Quick Start            "reserves": event.reserves,
+
             "timestamp": event.block_time
-        }
+
+### Prerequisites        }
+
         await a2a_client.broadcast("liquidity_updates", msg)
-```
 
-### **Phase 3: ML-Based Simulation (Core ML)**
+- Node.js v20+ (or v22)```
 
-3. **Price Prediction with Core ML**
+- MongoDB running locally or remote connection
+
+- Vincent App registered at [Vincent Developer Dashboard](https://app.heyvincent.ai)### **Phase 3: ML-Based Simulation (Core ML)**
+
+
+
+### 1. Clone & Install3. **Price Prediction with Core ML**
+
    - **Model**: LSTM trained on historical DEX data (Uniswap, SushiSwap, Hedera pools)
-   - **Input**: 60-minute OHLCV + on-chain volume
-   - **Output**: Predicted price movement (next 5 min, 15 min, 1 hr)
+
+```bash   - **Input**: 60-minute OHLCV + on-chain volume
+
+git clone <repository-url>   - **Output**: Predicted price movement (next 5 min, 15 min, 1 hr)
+
+cd ethonline-defi-layer
 
 #### **Building the Core ML Model**
 
-```bash
-# Step 1: Data Collection (Python)
+# Install backend dependencies
+
+cd backend```bash
+
+npm install# Step 1: Data Collection (Python)
+
 pip install pandas ccxt web3
 
-# Collect historical data from DEXes
-python scripts/collect_dex_data.py --chains hedera,ethereum --days 90
+# Install frontend dependencies
 
-# Step 2: Train LSTM Model (TensorFlow/Keras)
-python scripts/train_price_model.py \
-  --input data/dex_ohlcv.csv \
-  --epochs 100 \
-  --output models/price_predictor.h5
+cd ../frontend# Collect historical data from DEXes
 
-# Step 3: Convert to Core ML (.mlmodel)
-pip install coremltools
-python scripts/convert_to_coreml.py \
-  --keras-model models/price_predictor.h5 \
-  --output models/PricePredictor.mlmodel
+npm installpython scripts/collect_dex_data.py --chains hedera,ethereum --days 90
+
 ```
 
-**Training Script Outline** (`train_price_model.py`):
-```python
+# Step 2: Train LSTM Model (TensorFlow/Keras)
+
+### 2. Configure Environment Variablespython scripts/train_price_model.py \
+
+  --input data/dex_ohlcv.csv \
+
+**Backend** (`backend/.env`):  --epochs 100 \
+
+```env  --output models/price_predictor.h5
+
+PORT=3001
+
+NODE_ENV=development# Step 3: Convert to Core ML (.mlmodel)
+
+pip install coremltools
+
+# MongoDBpython scripts/convert_to_coreml.py \
+
+MONGODB_URI=mongodb://localhost:27017/deflow  --keras-model models/price_predictor.h5 \
+
+  --output models/PricePredictor.mlmodel
+
+# Vincent App Configuration (from Vincent Dashboard)```
+
+VINCENT_APP_ID=your_app_id
+
+VINCENT_ALLOWED_AUDIENCE=http://localhost:5176/auth/callback**Training Script Outline** (`train_price_model.py`):
+
+VINCENT_DELEGATEE_PRIVATE_KEY=your_delegatee_private_key```python
+
 import pandas as pd
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
+
+# LIT Protocolimport tensorflow as tf
+
+LIT_NETWORK=datilfrom tensorflow.keras.models import Sequential
+
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 
-# Load data
-df = pd.read_csv('data/dex_ohlcv.csv')
-X, y = prepare_sequences(df, window=60)  # 60-min lookback
+# Optional: Custom RPC URLs for better performance
+
+BASE_RPC_URL=https://mainnet.base.org# Load data
+
+ETHEREUM_RPC_URL=https://eth.llamarpc.comdf = pd.read_csv('data/dex_ohlcv.csv')
+
+# ... (see .env.example for all chains)X, y = prepare_sequences(df, window=60)  # 60-min lookback
+
+```
 
 # Build model
-model = Sequential([
-    LSTM(128, return_sequences=True, input_shape=(60, 6)),  # OHLCV + volume
-    Dropout(0.2),
-    LSTM(64),
-    Dropout(0.2),
-    Dense(32, activation='relu'),
-    Dense(3)  # 3 time horizons
-])
 
-model.compile(optimizer='adam', loss='mse')
-model.fit(X, y, epochs=100, batch_size=32, validation_split=0.2)
-model.save('models/price_predictor.h5')
+**Frontend** (`frontend/.env`):model = Sequential([
+
+```env    LSTM(128, return_sequences=True, input_shape=(60, 6)),  # OHLCV + volume
+
+VITE_VINCENT_APP_ID=your_app_id    Dropout(0.2),
+
+VITE_VINCENT_REDIRECT_URI=http://localhost:5176/auth/callback    LSTM(64),
+
+VITE_API_URL=http://localhost:3001    Dropout(0.2),
+
+```    Dense(32, activation='relu'),
+
+    Dense(3)  # 3 time horizons
+
+### 3. Run Development Servers])
+
+
+
+**Terminal 1 - Backend:**model.compile(optimizer='adam', loss='mse')
+
+```bashmodel.fit(X, y, epochs=100, batch_size=32, validation_split=0.2)
+
+cd backendmodel.save('models/price_predictor.h5')
+
+npm run dev```
+
 ```
 
 **Core ML Conversion** (`convert_to_coreml.py`):
-```python
-import coremltools as ct
-from tensorflow.keras.models import load_model
 
-keras_model = load_model('models/price_predictor.h5')
+**Terminal 2 - Frontend:**```python
+
+```bashimport coremltools as ct
+
+cd frontendfrom tensorflow.keras.models import load_model
+
+npm run dev
+
+```keras_model = load_model('models/price_predictor.h5')
+
 coreml_model = ct.convert(keras_model, source='tensorflow')
-coreml_model.save('models/PricePredictor.mlmodel')
+
+### 4. Access the Appcoreml_model.save('models/PricePredictor.mlmodel')
+
 ```
+
+Open [http://localhost:5176](http://localhost:5176) in your browser.
 
 4. **Running Inference**
-   - Agents load `.mlmodel` via Core ML runtime (macOS/iOS) or ONNX (Linux servers)
+
+---   - Agents load `.mlmodel` via Core ML runtime (macOS/iOS) or ONNX (Linux servers)
+
    - Predictions feed into decision logic
 
+## 📖 Usage Guide
+
 ```python
-# Inference Example
+
+### Creating Your First Workflow# Inference Example
+
 import coremltools as ct
 
-model = ct.models.MLModel('models/PricePredictor.mlmodel')
-prediction = model.predict({'input': recent_ohlcv_data})
-price_delta_5min = prediction['output'][0]
+1. **Sign In with Vincent**
+
+   - Click "Connect Wallet" on landing pagemodel = ct.models.MLModel('models/PricePredictor.mlmodel')
+
+   - Authorize the Vincent appprediction = model.predict({'input': recent_ohlcv_data})
+
+   - You'll be redirected back with a PKP walletprice_delta_5min = prediction['output'][0]
+
 ```
 
-### **Phase 4: Strategy Generation (A2A Coordination)**
+2. **Build Your Workflow**
 
-5. **Multi-Agent Consensus with Google A2A**
-   - **Google A2A** handles agent discovery, capability routing, and consensus
+   - Click "Create Workflow" or navigate to Builder### **Phase 4: Strategy Generation (A2A Coordination)**
+
+   - Drag nodes from the palette onto the canvas
+
+   - Connect nodes by dragging from output to input handles5. **Multi-Agent Consensus with Google A2A**
+
+   - Configure each node using the right sidebar   - **Google A2A** handles agent discovery, capability routing, and consensus
+
    - **Arbitrage Agent** proposes opportunity
-   - **Risk Agent** evaluates using VaR calculation
-   - **Rebalance Agent** suggests optimal execution path
-   - Agents vote on strategy using weighted confidence scores
 
-**Google A2A Setup**:
-```python
-# Install Google A2A framework
-pip install google-aistudio-a2a
+3. **Configure a Swap**   - **Risk Agent** evaluates using VaR calculation
 
-# Each agent registers with A2A orchestrator
-from google_aistudio.a2a import A2AClient, Capability
+   - Add a Trigger node (entry point)   - **Rebalance Agent** suggests optimal execution path
 
-a2a_client = A2AClient(
-    agent_id="arbitrage-001",
-    endpoint="https://a2a.googleapis.com/v1"
-)
+   - Add a Swap node   - Agents vote on strategy using weighted confidence scores
 
-# Register capabilities
+   - Connect Trigger → Swap
+
+   - Select Swap node and configure:**Google A2A Setup**:
+
+     - **Chain:** base```python
+
+     - **From Token:** `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` (USDC)# Install Google A2A framework
+
+     - **To Token:** `0x4200000000000000000000000000000000000006` (WETH)pip install google-aistudio-a2a
+
+     - **Amount:** `1`
+
+     - **From Token Decimals:** `6`# Each agent registers with A2A orchestrator
+
+     - **Slippage:** `0.5`from google_aistudio.a2a import A2AClient, Capability
+
+
+
+4. **Save & Execute**a2a_client = A2AClient(
+
+   - Click "Save Workflow" (top right)    agent_id="arbitrage-001",
+
+   - Click "Execute Manually" button in trigger config    endpoint="https://a2a.googleapis.com/v1"
+
+   - Watch real-time logs in the execution panel)
+
+
+
+---# Register capabilities
+
 a2a_client.register_capabilities([
-    Capability(
+
+## 🔧 API Reference    Capability(
+
         name="detect_arbitrage_opportunity",
-        description="Detects profitable cross-chain arbitrage opportunities",
+
+### Workflow Endpoints        description="Detects profitable cross-chain arbitrage opportunities",
+
         input_schema={
-            "type": "object",
-            "properties": {
-                "chains": {"type": "array", "items": {"type": "string"}},
-                "threshold": {"type": "number", "minimum": 0.01}
+
+```typescript            "type": "object",
+
+// Create workflow            "properties": {
+
+POST /api/workflows                "chains": {"type": "array", "items": {"type": "string"}},
+
+Body: { name, description, nodes, edges, triggers }                "threshold": {"type": "number", "minimum": 0.01}
+
             }
-        },
-        output_schema={
+
+// Get all workflows        },
+
+GET /api/workflows        output_schema={
+
             "type": "object",
-            "properties": {
-                "opportunity": {"type": "object"},
+
+// Get single workflow            "properties": {
+
+GET /api/workflows/:id                "opportunity": {"type": "object"},
+
                 "confidence": {"type": "number"}
-            }
-        }
-    )
+
+// Update workflow            }
+
+PUT /api/workflows/:id        }
+
+Body: { name, description, nodes, edges, triggers, isActive }    )
+
 ])
-```
+
+// Delete workflow```
+
+DELETE /api/workflows/:id
 
 **A2A Message Flow**:
-```python
-# Arbitrage agent broadcasts opportunity
-arbitrage_proposal = {
-    "agent_id": "arbitrage-001",
-    "strategy": "cross_chain_arb",
-    "pools": ["hedera/pool-1", "ethereum/uniswap-usdc-hbar"],
-    "expected_profit": 234.56,  # USD
-    "confidence": 0.87,
-    "ml_prediction": {
-        "price_delta_5min": +2.3,  # % change predicted by Core ML
-        "model_version": "v1.2.0"
-    }
-}
 
-# Send to risk agent via A2A
-risk_response = await a2a_client.call_capability(
-    target_agent="risk-001",
-    capability_name="assess_pool_risk",
-    params={
-        "strategy": arbitrage_proposal,
-        "time_horizon": "5min"
+// Execute workflow manually```python
+
+POST /api/workflows/:id/execute# Arbitrage agent broadcasts opportunity
+
+arbitrage_proposal = {
+
+// Get execution details    "agent_id": "arbitrage-001",
+
+GET /api/workflows/executions/:executionId    "strategy": "cross_chain_arb",
+
+    "pools": ["hedera/pool-1", "ethereum/uniswap-usdc-hbar"],
+
+// Get workflow execution history    "expected_profit": 234.56,  # USD
+
+GET /api/workflows/:workflowId/executions    "confidence": 0.87,
+
+```    "ml_prediction": {
+
+        "price_delta_5min": +2.3,  # % change predicted by Core ML
+
+### Auth Endpoints        "model_version": "v1.2.0"
+
     }
+
+```typescript}
+
+// Exchange Vincent code for JWT
+
+POST /api/auth/exchange# Send to risk agent via A2A
+
+Body: { code, redirectUri }risk_response = await a2a_client.call_capability(
+
+    target_agent="risk-001",
+
+// Get current user    capability_name="assess_pool_risk",
+
+GET /api/auth/me    params={
+
+```        "strategy": arbitrage_proposal,
+
+        "time_horizon": "5min"
+
+---    }
+
 )
 
+## 🏗️ Development
+
 # Risk agent performs VaR calculation
-if risk_response["risk_score"] < 0.3 and risk_response["var_95"] < 100:  # Low risk, max $100 loss
+
+### Tech Stackif risk_response["risk_score"] < 0.3 and risk_response["var_95"] < 100:  # Low risk, max $100 loss
+
     # Query rebalance agent for optimal execution
-    rebalance_response = await a2a_client.call_capability(
-        target_agent="rebalance-001",
-        capability_name="suggest_rebalance",
-        params={"strategy": arbitrage_proposal}
-    )
-    
-    # Multi-agent consensus voting
+
+**Frontend:**    rebalance_response = await a2a_client.call_capability(
+
+- React 18 + TypeScript        target_agent="rebalance-001",
+
+- Vite (build tool)        capability_name="suggest_rebalance",
+
+- React Flow (workflow canvas)        params={"strategy": arbitrage_proposal}
+
+- React Router DOM (routing)    )
+
+- Vincent App SDK (authentication)    
+
+- Tailwind CSS (styling)    # Multi-agent consensus voting
+
     votes = await a2a_client.gather_votes([
-        {"agent": "arbitrage-001", "vote": "approve", "weight": 0.4},
-        {"agent": "risk-001", "vote": "approve", "weight": 0.4},
-        {"agent": "rebalance-001", "vote": "approve", "weight": 0.2}
-    ])
-    
-    if votes["approval_score"] >= 0.7:  # 70% weighted approval
-        # Execute via Hedera Agent Kit
-        await execute_strategy(arbitrage_proposal)
-```
 
-**Google A2A Benefits**:
+**Backend:**        {"agent": "arbitrage-001", "vote": "approve", "weight": 0.4},
+
+- Node.js + Express        {"agent": "risk-001", "vote": "approve", "weight": 0.4},
+
+- MongoDB + Mongoose        {"agent": "rebalance-001", "vote": "approve", "weight": 0.2}
+
+- Vincent App SDK (auth middleware)    ])
+
+- Vincent Ability SDKs:    
+
+  - `@lit-protocol/vincent-ability-uniswap-swap@8.0.0`    if votes["approval_score"] >= 0.7:  # 70% weighted approval
+
+  - `@lit-protocol/vincent-ability-erc20-approval@3.1.4`        # Execute via Hedera Agent Kit
+
+  - `@lit-protocol/lit-node-client@7.3.1`        await execute_strategy(arbitrage_proposal)
+
+- ethers.js v5.8.0```
+
+
+
+### Code Structure**Google A2A Benefits**:
+
 - **Agent Discovery**: New agents automatically discover each other's capabilities
-- **Load Balancing**: A2A routes requests to least-busy agent instances
-- **Versioning**: Agents can specify capability versions (e.g., `assess_pool_risk@v2.0`)
-- **Monitoring**: Built-in dashboards for agent performance and message flow
 
----
+**Workflow Execution Flow:**- **Load Balancing**: A2A routes requests to least-busy agent instances
 
-## 🤝 Google A2A + Hedera Agent Kit Integration
+```- **Versioning**: Agents can specify capability versions (e.g., `assess_pool_risk@v2.0`)
 
-### **How They Work Together**
+User clicks "Execute" - **Monitoring**: Built-in dashboards for agent performance and message flow
 
-Our system uses **Google A2A** for agent coordination and **Hedera Agent Kit** for blockchain execution:
+  ↓
 
-```
-┌─────────────────────────────────────────────────────────┐
-│           Google A2A Orchestration Layer                │
-│  • Agent discovery and capability routing               │
-│  • Multi-agent consensus voting                         │
-│  • Message queue and event broadcasting                 │
-└────────────────┬────────────────────────────────────────┘
-                 │
-      ┌──────────┴──────────┐
-      │                     │
-┌─────▼─────┐         ┌────▼──────┐
-│ Arbitrage │         │ Risk Mgmt │
+Frontend POST /api/workflows/:id/execute---
+
+  ↓
+
+Backend creates ExecutionHistory record (status: running)## 🤝 Google A2A + Hedera Agent Kit Integration
+
+  ↓
+
+Async execution starts:### **How They Work Together**
+
+  1. Find trigger node
+
+  2. Build execution graph from nodes/edgesOur system uses **Google A2A** for agent coordination and **Hedera Agent Kit** for blockchain execution:
+
+  3. Execute nodes recursively:
+
+     - Validate config```
+
+     - Call node-specific function┌─────────────────────────────────────────────────────────┐
+
+     - Record step result│           Google A2A Orchestration Layer                │
+
+     - Find next nodes via edges│  • Agent discovery and capability routing               │
+
+     - Repeat│  • Multi-agent consensus voting                         │
+
+  ↓│  • Message queue and event broadcasting                 │
+
+Update ExecutionHistory (status: completed/failed)└────────────────┬────────────────────────────────────────┘
+
+  ↓                 │
+
+Frontend polls GET /api/workflows/executions/:id      ┌──────────┴──────────┐
+
+  ↓      │                     │
+
+Display real-time logs with status, outputs, errors┌─────▼─────┐         ┌────▼──────┐
+
+```│ Arbitrage │         │ Risk Mgmt │
+
 │  Agent    │         │  Agent    │
-└─────┬─────┘         └────┬──────┘
-      │                    │
-      │  Both agents use Hedera Agent Kit
-      │  for blockchain interactions
-      │                    │
-┌─────▼────────────────────▼─────┐
-│   Hedera Agent Kit Layer       │
-│  • LangChain tool integration  │
-│  • Transaction signing         │
-│  • HTS, HCS operations         │
-└────────────┬───────────────────┘
-             │
+
+**Node Execution (Swap Example):**└─────┬─────┘         └────┬──────┘
+
+```javascript      │                    │
+
+async function executeSwapNode(node, pkpInfo) {      │  Both agents use Hedera Agent Kit
+
+  // 1. Validate configuration      │  for blockchain interactions
+
+  // 2. Get chain RPC URL and ID      │                    │
+
+  // 3. Generate signed Uniswap quote┌─────▼────────────────────▼─────┐
+
+  // 4. Check ERC20 approval│   Hedera Agent Kit Layer       │
+
+  // 5. Execute approval if needed│  • LangChain tool integration  │
+
+  // 6. Execute swap│  • Transaction signing         │
+
+  // 7. Return transaction hashes and results│  • HTS, HCS operations         │
+
+}└────────────┬───────────────────┘
+
+```             │
+
       ┌──────▼──────┐
-      │   Hedera    │
+
+---      │   Hedera    │
+
       │   Network   │
-      └─────────────┘
+
+## 🛣️ Roadmap      └─────────────┘
+
 ```
 
-### **Architecture Pattern**
+### ✅ Completed
 
-1. **Google A2A** = Cognitive layer (decision making, coordination)
-2. **Hedera Agent Kit** = Execution layer (blockchain interactions)
-3. **Core ML** = Prediction layer (price forecasting)
+- [x] Visual workflow builder with React Flow### **Architecture Pattern**
 
-### **Example: Full Multi-Agent Workflow**
+- [x] Vincent authentication and authorization
+
+- [x] MongoDB workflow persistence1. **Google A2A** = Cognitive layer (decision making, coordination)
+
+- [x] Async execution engine with history2. **Hedera Agent Kit** = Execution layer (blockchain interactions)
+
+- [x] Real-time execution logs in frontend3. **Core ML** = Prediction layer (price forecasting)
+
+- [x] Uniswap V3 swap implementation
+
+- [x] Multi-chain support (8 mainnets, 6 testnets)### **Example: Full Multi-Agent Workflow**
+
+- [x] ERC20 approval handling
 
 ```typescript
-// arbitrage-agent.ts
-import { A2AClient } from 'google-aistudio/a2a';
-import { HederaLangchainToolkit, coreHTSPlugin } from 'hedera-agent-kit';
-import { ChatOpenAI } from '@langchain/openai';
+
+### 🚧 In Progress// arbitrage-agent.ts
+
+- [ ] Aave supply/withdraw/borrow/repay nodesimport { A2AClient } from 'google-aistudio/a2a';
+
+- [ ] ERC20 transfer node implementationimport { HederaLangchainToolkit, coreHTSPlugin } from 'hedera-agent-kit';
+
+- [ ] Condition node evaluation logicimport { ChatOpenAI } from '@langchain/openai';
+
+- [ ] AI agent integration (ASI)
 
 class ArbitrageAgent {
-  constructor() {
-    // Initialize Google A2A client
-    this.a2a = new A2AClient({
-      agentId: 'arbitrage-001',
-      endpoint: process.env.A2A_ENDPOINT
-    });
-    
-    // Initialize Hedera Agent Kit
-    const client = Client.forTestnet().setOperator(
+
+### 📋 Planned  constructor() {
+
+- [ ] Scheduled/cron-based triggers    // Initialize Google A2A client
+
+- [ ] Event-based triggers (price alerts, on-chain events)    this.a2a = new A2AClient({
+
+- [ ] Workflow templates library      agentId: 'arbitrage-001',
+
+- [ ] Gas optimization strategies      endpoint: process.env.A2A_ENDPOINT
+
+- [ ] Multi-step transaction batching    });
+
+- [ ] Historical performance analytics    
+
+- [ ] Workflow sharing and marketplace    // Initialize Hedera Agent Kit
+
+- [ ] Advanced AI strategies (arbitrage, yield optimization)    const client = Client.forTestnet().setOperator(
+
       process.env.HEDERA_ACCOUNT_ID,
-      PrivateKey.fromStringECDSA(process.env.HEDERA_PRIVATE_KEY)
+
+---      PrivateKey.fromStringECDSA(process.env.HEDERA_PRIVATE_KEY)
+
     );
-    
+
+## 🔐 Security Considerations    
+
     this.hederaToolkit = new HederaLangchainToolkit({
-      client,
-      configuration: {
-        mode: AgentMode.AUTONOMOUS,
-        plugins: [coreHTSPlugin, crossChainLiquidityPlugin]
-      }
-    });
+
+- **Private Keys:** Never committed to git (use `.env` files)      client,
+
+- **Vincent PKP:** Controlled by LIT Protocol's distributed network      configuration: {
+
+- **Delegatee Signer:** Required for backend to sign requests to LIT        mode: AgentMode.AUTONOMOUS,
+
+- **User Permissions:** Enforced via Vincent policies and spending limits        plugins: [coreHTSPlugin, crossChainLiquidityPlugin]
+
+- **TEE Execution:** All DeFi operations run in Trusted Execution Environment      }
+
+- **CORS:** Currently open for development (restrict in production)    });
+
     
-    // Initialize LangChain agent
+
+---    // Initialize LangChain agent
+
     this.llm = new ChatOpenAI({ model: 'gpt-4o-mini' });
-  }
+
+## 📚 Resources  }
+
   
-  async detectOpportunity() {
-    // 1. Use Hedera Agent Kit to query liquidity
-    const tools = this.hederaToolkit.getTools();
-    const liquidityTool = tools.find(t => t.name === 'query_cross_chain_liquidity');
-    
+
+- [LIT Protocol Documentation](https://developer.litprotocol.com/)  async detectOpportunity() {
+
+- [Vincent SDK Documentation](https://docs.heyvincent.ai/)    // 1. Use Hedera Agent Kit to query liquidity
+
+- [Vincent Developer Dashboard](https://app.heyvincent.ai)    const tools = this.hederaToolkit.getTools();
+
+- [React Flow Documentation](https://reactflow.dev/)    const liquidityTool = tools.find(t => t.name === 'query_cross_chain_liquidity');
+
+- [Uniswap V3 SDK](https://docs.uniswap.org/sdk/v3/overview)    
+
     const liquidity = await liquidityTool.invoke({
-      chains: ['hedera', 'ethereum'],
+
+---      chains: ['hedera', 'ethereum'],
+
       tokenPair: ['HBAR', 'USDC']
-    });
+
+## 🤝 Contributing    });
+
     
-    // 2. Run Core ML prediction
+
+Contributions welcome! Please:    // 2. Run Core ML prediction
+
     const prediction = await this.runMLPrediction(liquidity);
-    
-    // 3. If opportunity detected, broadcast via Google A2A
-    if (prediction.profit > 100 && prediction.confidence > 0.8) {
-      await this.a2a.broadcast({
-        channel: 'arbitrage_opportunities',
+
+1. Fork the repository    
+
+2. Create a feature branch    // 3. If opportunity detected, broadcast via Google A2A
+
+3. Make your changes    if (prediction.profit > 100 && prediction.confidence > 0.8) {
+
+4. Add tests if applicable      await this.a2a.broadcast({
+
+5. Submit a pull request        channel: 'arbitrage_opportunities',
+
         message: {
-          type: 'new_opportunity',
+
+---          type: 'new_opportunity',
+
           data: {
-            pools: liquidity.pools,
+
+## 📄 License            pools: liquidity.pools,
+
             expected_profit: prediction.profit,
-            confidence: prediction.confidence
+
+MIT            confidence: prediction.confidence
+
           }
-        }
+
+---        }
+
       });
-      
+
+## 🙏 Acknowledgments      
+
       // 4. Request risk assessment from Risk Agent
-      const riskAssessment = await this.a2a.call({
-        targetAgent: 'risk-001',
-        capability: 'assess_pool_risk',
+
+- **LIT Protocol** - For Vincent SDK and PKP infrastructure      const riskAssessment = await this.a2a.call({
+
+- **Uniswap** - For DEX protocol and Alpha Router        targetAgent: 'risk-001',
+
+- **React Flow** - For the amazing workflow canvas library        capability: 'assess_pool_risk',
+
         params: { opportunity: prediction }
-      });
+
+---      });
+
       
-      // 5. If approved, execute via Hedera Agent Kit
+
+**Built with ❤️ for ETHOnline 2025**      // 5. If approved, execute via Hedera Agent Kit
+
       if (riskAssessment.approved) {
         return await this.executeSwap(prediction);
       }

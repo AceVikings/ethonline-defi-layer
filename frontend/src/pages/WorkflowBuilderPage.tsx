@@ -19,6 +19,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { apiClient } from '../lib/apiClient';
 import { showToast } from '../lib/toast';
+import { getTokensForChain, findTokenByAddress } from '../config/tokens';
 
 // Custom node component with dynamic handles based on node type
 const CustomNode = ({ data }: any) => {
@@ -456,13 +457,60 @@ const TriggerConfig = ({
 };
 
 const SwapConfig = ({ config, onUpdate }: { config: any; onUpdate: (config: any) => void }) => {
+  const chain = config.chain || 'base';
+  const availableTokens = getTokensForChain(chain);
+  
+  // Track whether user is using custom address
+  const [fromTokenMode, setFromTokenMode] = useState<'preset' | 'custom'>(() => {
+    return config.fromToken && !findTokenByAddress(chain, config.fromToken) ? 'custom' : 'preset';
+  });
+  const [toTokenMode, setToTokenMode] = useState<'preset' | 'custom'>(() => {
+    return config.toToken && !findTokenByAddress(chain, config.toToken) ? 'custom' : 'preset';
+  });
+
+  // When chain changes, reset token selections
+  const handleChainChange = (newChain: string) => {
+    onUpdate({ 
+      ...config, 
+      chain: newChain,
+      fromToken: '',
+      toToken: '',
+      fromTokenDecimals: '18',
+    });
+    setFromTokenMode('preset');
+    setToTokenMode('preset');
+  };
+
+  // Handle from token selection
+  const handleFromTokenChange = (value: string) => {
+    if (value === 'custom') {
+      setFromTokenMode('custom');
+      onUpdate({ ...config, fromToken: '', fromTokenDecimals: '18' });
+    } else {
+      const token = availableTokens.find(t => t.address === value);
+      if (token) {
+        onUpdate({ ...config, fromToken: token.address, fromTokenDecimals: token.decimals.toString() });
+      }
+    }
+  };
+
+  // Handle to token selection
+  const handleToTokenChange = (value: string) => {
+    if (value === 'custom') {
+      setToTokenMode('custom');
+      onUpdate({ ...config, toToken: '' });
+    } else {
+      onUpdate({ ...config, toToken: value });
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div>
         <label className="block text-xs font-semibold text-gray-700 mb-2">Chain</label>
         <select
-          value={config.chain || 'base'}
-          onChange={(e) => onUpdate({ ...config, chain: e.target.value })}
+          value={chain}
+          onChange={(e) => handleChainChange(e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
         >
           <optgroup label="Mainnets">
@@ -486,28 +534,88 @@ const SwapConfig = ({ config, onUpdate }: { config: any; onUpdate: (config: any)
         </select>
       </div>
       
+      {/* From Token */}
       <div>
-        <label className="block text-xs font-semibold text-gray-700 mb-2">From Token Address</label>
-        <input
-          type="text"
-          value={config.fromToken || ''}
-          onChange={(e) => onUpdate({ ...config, fromToken: e.target.value })}
-          placeholder="0x..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none font-mono"
-        />
-        <p className="text-xs text-gray-500 mt-1">Token contract address</p>
+        <label className="block text-xs font-semibold text-gray-700 mb-2">From Token</label>
+        {fromTokenMode === 'preset' ? (
+          <div className="space-y-2">
+            <select
+              value={config.fromToken || ''}
+              onChange={(e) => handleFromTokenChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
+            >
+              <option value="">Select a token...</option>
+              {availableTokens.map((token) => (
+                <option key={token.address} value={token.address}>
+                  {token.symbol} - {token.name}
+                </option>
+              ))}
+              <option value="custom">🔧 Custom Address</option>
+            </select>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <input
+              type="text"
+              value={config.fromToken || ''}
+              onChange={(e) => onUpdate({ ...config, fromToken: e.target.value })}
+              placeholder="0x..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none font-mono"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setFromTokenMode('preset');
+                onUpdate({ ...config, fromToken: '', fromTokenDecimals: '18' });
+              }}
+              className="text-xs text-orange-600 hover:text-orange-700"
+            >
+              ← Back to popular tokens
+            </button>
+          </div>
+        )}
       </div>
-      
+
+      {/* To Token */}
       <div>
-        <label className="block text-xs font-semibold text-gray-700 mb-2">To Token Address</label>
-        <input
-          type="text"
-          value={config.toToken || ''}
-          onChange={(e) => onUpdate({ ...config, toToken: e.target.value })}
-          placeholder="0x..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none font-mono"
-        />
-        <p className="text-xs text-gray-500 mt-1">Token contract address</p>
+        <label className="block text-xs font-semibold text-gray-700 mb-2">To Token</label>
+        {toTokenMode === 'preset' ? (
+          <div className="space-y-2">
+            <select
+              value={config.toToken || ''}
+              onChange={(e) => handleToTokenChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
+            >
+              <option value="">Select a token...</option>
+              {availableTokens.map((token) => (
+                <option key={token.address} value={token.address}>
+                  {token.symbol} - {token.name}
+                </option>
+              ))}
+              <option value="custom">🔧 Custom Address</option>
+            </select>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <input
+              type="text"
+              value={config.toToken || ''}
+              onChange={(e) => onUpdate({ ...config, toToken: e.target.value })}
+              placeholder="0x..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none font-mono"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setToTokenMode('preset');
+                onUpdate({ ...config, toToken: '' });
+              }}
+              className="text-xs text-orange-600 hover:text-orange-700"
+            >
+              ← Back to popular tokens
+            </button>
+          </div>
+        )}
       </div>
       
       <div>
@@ -532,8 +640,13 @@ const SwapConfig = ({ config, onUpdate }: { config: any; onUpdate: (config: any)
           min="0"
           max="18"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
+          disabled={fromTokenMode === 'preset' && config.fromToken}
         />
-        <p className="text-xs text-gray-500 mt-1">Usually 18 for most tokens, 6 for USDC</p>
+        <p className="text-xs text-gray-500 mt-1">
+          {fromTokenMode === 'preset' && config.fromToken 
+            ? 'Auto-filled from selected token' 
+            : 'Usually 18 for most tokens, 6 for USDC'}
+        </p>
       </div>
       
       <div>
