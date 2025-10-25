@@ -150,7 +150,38 @@ const TriggerConfig = ({
   workflowId?: string;
 }) => {
   const [triggering, setTriggering] = useState(false);
+  const [executionId, setExecutionId] = useState<string | null>(null);
+  const [executionData, setExecutionData] = useState<any>(null);
+  const [showLogs, setShowLogs] = useState(false);
   const triggerType = config.triggerType || 'manual';
+  
+  // Poll for execution updates
+  useEffect(() => {
+    if (!executionId || !triggering) return;
+    
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await apiClient.getExecutionDetails(executionId);
+        setExecutionData(response.execution);
+        
+        // Stop polling if execution is complete or failed
+        if (response.execution.status === 'completed' || response.execution.status === 'failed') {
+          setTriggering(false);
+          clearInterval(pollInterval);
+          
+          if (response.execution.status === 'completed') {
+            showToast.success('Workflow execution completed!');
+          } else {
+            showToast.error('Workflow execution failed');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch execution details:', error);
+      }
+    }, 1000); // Poll every second
+    
+    return () => clearInterval(pollInterval);
+  }, [executionId, triggering]);
   
   const handleManualTrigger = async () => {
     if (!workflowId) {
@@ -159,15 +190,61 @@ const TriggerConfig = ({
     }
     
     setTriggering(true);
+    setShowLogs(true);
+    setExecutionData(null);
+    
     try {
       const response = await apiClient.executeWorkflow(workflowId);
+      setExecutionId(response.executionId);
       showToast.success('Workflow execution started!');
       console.log('Execution response:', response);
     } catch (error: any) {
-      showToast.error(error.message || 'Failed to trigger workflow');
+      const errorMsg = error.message || 'Failed to trigger workflow';
+      
+      // Check if it's a configuration error
+      if (errorMsg.includes('missing required configuration')) {
+        showToast.error('Please configure all nodes and save the workflow before executing');
+      } else {
+        showToast.error(errorMsg);
+      }
+      
       console.error('Execution error:', error);
-    } finally {
       setTriggering(false);
+    }
+  };
+  
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'success': return 'text-green-600';
+      case 'failed': return 'text-red-600';
+      case 'running': return 'text-blue-600';
+      default: return 'text-gray-600';
+    }
+  };
+  
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'success':
+        return (
+          <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+          </svg>
+        );
+      case 'failed':
+        return (
+          <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          </svg>
+        );
+      case 'running':
+        return (
+          <svg className="animate-spin h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        );
+      default:
+        return null;
     }
   };
   
@@ -188,7 +265,18 @@ const TriggerConfig = ({
       </div>
       
       {triggerType === 'manual' && (
-        <div className="pt-2">
+        <div className="pt-2 space-y-2">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+            <div className="flex items-start gap-2">
+              <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <p className="font-semibold mb-1">Remember to save before executing!</p>
+                <p>Configure all nodes, then click "Save Workflow" to persist your changes before triggering execution.</p>
+              </div>
+            </div>
+          </div>
           <button
             onClick={handleManualTrigger}
             disabled={triggering || !workflowId}
@@ -216,6 +304,112 @@ const TriggerConfig = ({
             <p className="text-xs text-amber-600 mt-2 text-center">
               Save workflow first to enable execution
             </p>
+          )}
+          
+          {/* Execution Logs Viewer */}
+          {showLogs && executionData && (
+            <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden bg-white">
+              <div className="bg-gray-50 border-b border-gray-200 px-3 py-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="text-xs font-semibold text-gray-700">Execution Logs</span>
+                </div>
+                <button
+                  onClick={() => setShowLogs(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="max-h-96 overflow-y-auto p-3 space-y-2 bg-gray-900 text-gray-100 font-mono text-xs">
+                {/* Execution Status */}
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-700">
+                  <span className="text-gray-400">Status:</span>
+                  <span className={`font-semibold ${
+                    executionData.status === 'completed' ? 'text-green-400' :
+                    executionData.status === 'failed' ? 'text-red-400' :
+                    executionData.status === 'running' ? 'text-blue-400' :
+                    'text-gray-400'
+                  }`}>
+                    {executionData.status.toUpperCase()}
+                  </span>
+                  {executionData.startedAt && (
+                    <>
+                      <span className="text-gray-600 mx-2">|</span>
+                      <span className="text-gray-400">Started:</span>
+                      <span className="text-gray-300">{new Date(executionData.startedAt).toLocaleTimeString()}</span>
+                    </>
+                  )}
+                  {executionData.completedAt && (
+                    <>
+                      <span className="text-gray-600 mx-2">|</span>
+                      <span className="text-gray-400">Duration:</span>
+                      <span className="text-gray-300">
+                        {Math.round((new Date(executionData.completedAt).getTime() - new Date(executionData.startedAt).getTime()))}ms
+                      </span>
+                    </>
+                  )}
+                </div>
+                
+                {/* Execution Steps */}
+                {executionData.steps && executionData.steps.length > 0 ? (
+                  executionData.steps.map((step: any, index: number) => (
+                    <div key={index} className="border-l-2 border-gray-700 pl-3 py-1">
+                      <div className="flex items-start gap-2">
+                        <div className="mt-0.5">{getStatusIcon(step.status)}</div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`font-semibold ${getStatusColor(step.status)}`}>
+                              [{step.nodeType}]
+                            </span>
+                            <span className="text-gray-300">{step.nodeLabel || step.nodeId}</span>
+                          </div>
+                          
+                          {step.output && (
+                            <div className="bg-gray-800 rounded p-2 mt-1 text-xs">
+                              <div className="text-gray-400 mb-1">Output:</div>
+                              <pre className="text-green-400 whitespace-pre-wrap">
+                                {JSON.stringify(step.output, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+                          
+                          {step.error && (
+                            <div className="bg-red-900/30 border border-red-700 rounded p-2 mt-1 text-xs">
+                              <div className="text-red-400 font-semibold mb-1">Error:</div>
+                              <pre className="text-red-300 whitespace-pre-wrap">{step.error}</pre>
+                            </div>
+                          )}
+                          
+                          {step.completedAt && step.startedAt && (
+                            <div className="text-gray-500 text-xs mt-1">
+                              Duration: {Math.round(new Date(step.completedAt).getTime() - new Date(step.startedAt).getTime())}ms
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-gray-500 text-center py-4">
+                    {triggering ? 'Waiting for execution to start...' : 'No execution steps yet'}
+                  </div>
+                )}
+                
+                {/* Overall Error */}
+                {executionData.error && (
+                  <div className="bg-red-900/30 border border-red-700 rounded p-3 mt-2">
+                    <div className="text-red-400 font-semibold mb-1">Workflow Error:</div>
+                    <pre className="text-red-300 whitespace-pre-wrap text-xs">{executionData.error}</pre>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -265,25 +459,55 @@ const SwapConfig = ({ config, onUpdate }: { config: any; onUpdate: (config: any)
   return (
     <div className="space-y-3">
       <div>
-        <label className="block text-xs font-semibold text-gray-700 mb-2">From Token</label>
+        <label className="block text-xs font-semibold text-gray-700 mb-2">Chain</label>
+        <select
+          value={config.chain || 'base'}
+          onChange={(e) => onUpdate({ ...config, chain: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
+        >
+          <optgroup label="Mainnets">
+            <option value="ethereum">Ethereum</option>
+            <option value="polygon">Polygon</option>
+            <option value="arbitrum">Arbitrum</option>
+            <option value="optimism">Optimism</option>
+            <option value="base">Base</option>
+            <option value="bnb">BNB Chain</option>
+            <option value="avalanche">Avalanche</option>
+            <option value="celo">Celo</option>
+          </optgroup>
+          <optgroup label="Testnets">
+            <option value="sepolia">Sepolia</option>
+            <option value="basesepolia">Base Sepolia</option>
+            <option value="arbitrumsepolia">Arbitrum Sepolia</option>
+            <option value="optimismsepolia">Optimism Sepolia</option>
+            <option value="avalanchefuji">Avalanche Fuji</option>
+            <option value="polygonmumbai">Polygon Mumbai</option>
+          </optgroup>
+        </select>
+      </div>
+      
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-2">From Token Address</label>
         <input
           type="text"
           value={config.fromToken || ''}
           onChange={(e) => onUpdate({ ...config, fromToken: e.target.value })}
-          placeholder="e.g., USDC"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
+          placeholder="0x..."
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none font-mono"
         />
+        <p className="text-xs text-gray-500 mt-1">Token contract address</p>
       </div>
       
       <div>
-        <label className="block text-xs font-semibold text-gray-700 mb-2">To Token</label>
+        <label className="block text-xs font-semibold text-gray-700 mb-2">To Token Address</label>
         <input
           type="text"
           value={config.toToken || ''}
           onChange={(e) => onUpdate({ ...config, toToken: e.target.value })}
-          placeholder="e.g., ETH"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
+          placeholder="0x..."
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none font-mono"
         />
+        <p className="text-xs text-gray-500 mt-1">Token contract address</p>
       </div>
       
       <div>
@@ -295,6 +519,21 @@ const SwapConfig = ({ config, onUpdate }: { config: any; onUpdate: (config: any)
           placeholder="0.00"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
         />
+        <p className="text-xs text-gray-500 mt-1">Amount in human-readable format (e.g., 0.1)</p>
+      </div>
+      
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-2">From Token Decimals</label>
+        <input
+          type="number"
+          value={config.fromTokenDecimals || '18'}
+          onChange={(e) => onUpdate({ ...config, fromTokenDecimals: e.target.value })}
+          placeholder="18"
+          min="0"
+          max="18"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
+        />
+        <p className="text-xs text-gray-500 mt-1">Usually 18 for most tokens, 6 for USDC</p>
       </div>
       
       <div>
@@ -309,6 +548,7 @@ const SwapConfig = ({ config, onUpdate }: { config: any; onUpdate: (config: any)
           max="5"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
         />
+        <p className="text-xs text-gray-500 mt-1">Maximum price movement tolerance</p>
       </div>
     </div>
   );
@@ -780,15 +1020,17 @@ export default function WorkflowBuilderPage() {
         isActive: false,
       };
 
+      console.log('💾 Saving workflow data:', JSON.stringify(workflowData, null, 2));
+
       if (id && id !== 'new') {
         await apiClient.updateWorkflow(id, workflowData);
         showToast.success('Workflow updated successfully!');
       } else {
-        await apiClient.createWorkflow(workflowData);
+        const response = await apiClient.createWorkflow(workflowData);
         showToast.success('Workflow created successfully!');
+        // Update URL to use the new workflow ID instead of 'new'
+        navigate(`/workflow/${response.workflow._id}`, { replace: true });
       }
-
-      navigate('/app');
     } catch (error) {
       console.error('Failed to save workflow:', error);
       showToast.error('Failed to save workflow. Please try again.');

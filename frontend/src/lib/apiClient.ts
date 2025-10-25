@@ -101,6 +101,12 @@ class ApiClient {
     );
   }
 
+  async getExecutionDetails(executionId: string) {
+    return this.request<{ success: boolean; execution: any }>(
+      `/api/workflows/executions/${executionId}`
+    );
+  }
+
   async getAllExecutions() {
     return this.request<{ success: boolean; executions: any[] }>('/api/workflows/executions');
   }
