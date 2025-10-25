@@ -21,6 +21,7 @@ import { apiClient } from '../lib/apiClient';
 import { POPULAR_TOKENS } from '../config/tokens';
 import { showToast } from '../lib/toast';
 import { getTokensForChain, findTokenByAddress } from '../config/tokens';
+import { AIWorkflowBuilder } from '../components/AIWorkflowBuilder';
 
 // Custom node component with dynamic handles based on node type
 const CustomNode = ({ data }: any) => {
@@ -987,6 +988,7 @@ export default function WorkflowBuilderPage() {
   const [showNodePalette, setShowNodePalette] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [showAIBuilder, setShowAIBuilder] = useState(false);
 
   useEffect(() => {
     if (id && id !== 'new') {
@@ -1079,6 +1081,44 @@ export default function WorkflowBuilderPage() {
 
     setNodes((nds) => [...nds, newNode]);
   }, [setNodes, nodes]);
+
+  // Handle AI-generated workflow
+  const handleAIWorkflowGenerated = useCallback((
+    workflow: { nodes: any[]; edges: any[] },
+    explanation: string
+  ) => {
+    console.log('📥 Receiving AI-generated workflow:', workflow);
+    console.log('💬 Explanation:', explanation);
+
+    // Convert AI nodes to React Flow format
+    if (workflow.nodes && workflow.nodes.length > 0) {
+      const flowNodes = workflow.nodes.map((node: any) => ({
+        id: node.id,
+        type: 'custom',
+        position: node.position || { x: 0, y: 0 },
+        data: {
+          label: node.data?.label || node.label || 'Node',
+          type: node.data?.type || node.type || 'trigger',
+          config: node.data?.config || node.config || {},
+        },
+      }));
+
+      // Convert AI edges to React Flow format
+      const flowEdges = (workflow.edges || []).map((edge: any) => ({
+        id: edge.id,
+        source: edge.source || edge.from,
+        target: edge.target || edge.to,
+        type: 'smoothstep',
+        animated: true,
+        style: { stroke: '#f97316', strokeWidth: 2 },
+      }));
+
+      setNodes(flowNodes);
+      setEdges(flowEdges);
+      
+      showToast.success('AI workflow applied! You can now edit it manually.');
+    }
+  }, [setNodes, setEdges]);
 
   // Handle drag and drop from palette
   const onDragStart = useCallback((event: React.DragEvent, nodeType: string) => {

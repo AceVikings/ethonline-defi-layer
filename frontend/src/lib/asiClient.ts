@@ -33,16 +33,13 @@ export async function generateWorkflowFromPrompt(
   query: string
 ): Promise<WorkflowGenerationResult> {
   try {
-    const response = await apiClient.post('/api/asi/workflow/generate', {
-      query,
-    });
-
-    return response.data;
+    const response = await apiClient.generateWorkflowFromPrompt(query);
+    return response;
   } catch (error: any) {
     console.error('Error generating workflow:', error);
     return {
       success: false,
-      error: error.response?.data?.message || error.message || 'Failed to generate workflow',
+      error: error.message || 'Failed to generate workflow',
     };
   }
 }
@@ -56,18 +53,13 @@ export async function refineWorkflow(
   conversationHistory: ConversationMessage[] = []
 ): Promise<WorkflowGenerationResult> {
   try {
-    const response = await apiClient.post('/api/asi/workflow/refine', {
-      query,
-      currentWorkflow,
-      conversationHistory,
-    });
-
-    return response.data;
+    const response = await apiClient.refineWorkflow(query, currentWorkflow, conversationHistory);
+    return response;
   } catch (error: any) {
     console.error('Error refining workflow:', error);
     return {
       success: false,
-      error: error.response?.data?.message || error.message || 'Failed to refine workflow',
+      error: error.message || 'Failed to refine workflow',
     };
   }
 }
@@ -77,18 +69,14 @@ export async function refineWorkflow(
  */
 export async function searchAgents(query: string, semantic: boolean = false) {
   try {
-    const response = await apiClient.post('/api/asi/agents/search', {
-      query,
-      semantic,
-    });
-
-    return response.data;
+    const response = await apiClient.searchAgents(query, semantic);
+    return response;
   } catch (error: any) {
     console.error('Error searching agents:', error);
     return {
       success: false,
       agents: [],
-      error: error.response?.data?.message || error.message,
+      error: error.message,
     };
   }
 }
@@ -98,8 +86,8 @@ export async function searchAgents(query: string, semantic: boolean = false) {
  */
 export async function checkASIHealth() {
   try {
-    const response = await apiClient.get('/api/asi/health');
-    return response.data;
+    const response = await apiClient.checkASIHealth();
+    return response;
   } catch (error) {
     return {
       success: false,
