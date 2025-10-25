@@ -119,14 +119,44 @@ export async function wrapETH({ chainName, amount, userPkpAddress }) {
       throw new Error(result.runtimeError || 'Transaction failed');
     }
 
+    // Extract the signed transaction
+    const signedTx = result.result?.signedTransaction;
+    const txHash = result.result?.deserializedSignedTransaction?.hash;
+
+    if (!signedTx) {
+      throw new Error('No signed transaction returned from Vincent');
+    }
+
+    console.log('✅ Transaction signed successfully!');
+    console.log(`   Tx Hash (computed): ${txHash}`);
+    console.log(`   Broadcasting transaction...`);
+
+    // Broadcast the signed transaction to the network
+    const txResponse = await provider.sendTransaction(signedTx);
+    console.log(`   ✓ Transaction broadcasted: ${txResponse.hash}`);
+    console.log(`   Waiting for confirmation...`);
+
+    // Wait for the transaction to be mined
+    const receipt = await txResponse.wait(1); // Wait for 1 confirmation
+    console.log(`   ✓ Transaction confirmed in block ${receipt.blockNumber}`);
+    console.log(`   Gas used: ${receipt.gasUsed.toString()}`);
+
+    // Verify WETH balance increased
+    const wethContract = new ethers.Contract(wethAddress, WETH_ABI, provider);
+    const wethBalance = await wethContract.balanceOf(userPkpAddress);
+    const wethBalanceFormatted = ethers.utils.formatEther(wethBalance);
+    console.log(`   ✓ New WETH balance: ${wethBalanceFormatted} WETH`);
+
     console.log('✅ ETH wrapped successfully!');
-    console.log(`   Tx Hash: ${result.result?.transactionHash || result.result}`);
 
     return {
       success: true,
-      txHash: result.result?.transactionHash || result.result,
+      txHash: receipt.transactionHash,
       amount: amount,
       wethAddress: wethAddress,
+      blockNumber: receipt.blockNumber,
+      gasUsed: receipt.gasUsed.toString(),
+      wethBalance: wethBalanceFormatted,
     };
   } catch (error) {
     console.error('❌ Wrap ETH failed:', error.message);
