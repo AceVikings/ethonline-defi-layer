@@ -66,24 +66,34 @@ INTENT: <intent_type>
 KEYWORD: <extracted_keyword>"""
 
         try:
+            url = f"{self.base_url}/chat/completions"
+            payload = {
+                "model": "asi1-mini",
+                "messages": [
+                    {"role": "system", "content": "You are a DeFi workflow assistant that classifies user intents."},
+                    {"role": "user", "content": prompt}
+                ]
+            }
+            
+            print(f"[DEBUG ASI:One] URL: {url}")
+            print(f"[DEBUG ASI:One] Headers: {self.headers}")
+            print(f"[DEBUG ASI:One] Payload: {payload}")
+            
             response = requests.post(
-                f"{self.base_url}/chat/completions",
+                url,
                 headers=self.headers,
-                json={
-                    "model": "gpt-4",
-                    "messages": [
-                        {"role": "system", "content": "You are a DeFi workflow assistant that classifies user intents."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.3,
-                    "max_tokens": 150
-                },
+                json=payload,
                 timeout=30
             )
+            
+            print(f"[DEBUG ASI:One] Response Status: {response.status_code}")
+            print(f"[DEBUG ASI:One] Response Headers: {dict(response.headers)}")
+            print(f"[DEBUG ASI:One] Response Text: {response.text[:500]}")
             
             response.raise_for_status()
             result = response.json()
             
+            # ASI:One response format: choices[0].message.content
             content = result['choices'][0]['message']['content']
             
             # Parse response
@@ -110,45 +120,120 @@ KEYWORD: <extracted_keyword>"""
         
         Args:
             user_query: User's workflow description
-            context: Optional context (available strategies, nodes, etc.)
+            context: Context from MeTTa knowledge graph (node types, strategies, etc.)
             
         Returns:
             Workflow JSON structure
         """
         
-        context_str = ""
-        if context:
-            context_str = f"\n\nAvailable context:\n{self._format_context(context)}"
+        # Build node types description from context
+        node_types_desc = ""
+        if context and "node_types" in context:
+            node_types_desc = "\nAvailable node types:\n"
+            for nt in context["node_types"]:
+                node_types_desc += f"- {nt['type']}: {nt['description']}\n"
+        else:
+            node_types_desc = "\nAvailable node types: trigger, swap, aave, transfer, condition, ai\n"
         
-        prompt = f"""Create a DeFi workflow based on this request.
+        # Build examples from strategies
+        examples_desc = ""
+        if context and "strategies" in context:
+            examples_desc = "\nExample workflows:\n"
+            for strat in context["strategies"][:3]:  # Show first 3
+                examples_desc += f"- {strat['description']}: {strat['sequence']}\n"
+        
+        prompt = f"""Create a DeFi workflow based on this request: "{user_query}"
 
-User Request: "{user_query}"{context_str}
+{node_types_desc}
+{examples_desc}
 
-Available node types:
-- trigger: Start workflow (manual or scheduled)
-- swap: Exchange tokens (Uniswap or 1inch)
-- aave: Aave V3 operations (supply, borrow, withdraw, repay)
-- transfer: Send tokens to address
-- condition: If/else branching
-- ai: AI-powered decision making
+CRITICAL REQUIREMENTS:
+1. ONLY generate the EXACT operations the user requested - DO NOT add extra helpful steps
+2. If user asks for "swap X to Y", generate ONLY: trigger + swap nodes
+3. If user asks for "swap and supply", generate: trigger + swap + aave nodes
+4. DO NOT assume the user wants to transfer tokens unless explicitly asked
+5. Use ONLY these exact node type values: trigger, swap, aave, transfer, condition, ai
 
-Generate a valid workflow JSON with nodes and edges.
-Include proper configuration for each node.
+FIELD NAMING REQUIREMENTS:
+- Swap nodes MUST use: "fromToken" (address), "toToken" (address), "fromTokenDecimals", "chain", "protocol", "amount", "slippage"
+- Aave nodes MUST use: "asset" (symbol like "USDC"), "amount", "action" (supply/borrow/withdraw/repay), "useAsCollateral", "chain"
+- Transfer nodes MUST use: "token" (address), "to" (address), "amount", "chain"
+- DO NOT use "tokenIn" or "tokenOut" - use "fromToken" and "toToken" instead
 
-Respond with ONLY valid JSON, no explanation."""
+TOKEN ADDRESS MAPPINGS (Base network):
+- ETH: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
+- USDC: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+- USDT: 0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2
+- DAI: 0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb
+- WETH: 0x4200000000000000000000000000000000000006
+
+6. Each node MUST have:
+   - id: string (e.g., "node-1", "node-2")
+   - type: string (MUST be one of: trigger, swap, aave, transfer, condition, ai)
+   - data: object with "label" (string) and "config" (object)
+   - position: object with "x" and "y" (numbers)
+7. Each edge MUST have:
+   - id: string (e.g., "edge-1")
+   - source: string (source node id)
+   - target: string (target node id)
+   - sourceHandle: "output"
+   - targetHandle: "input"
+8. ALWAYS start with a "trigger" node
+9. Do NOT use brackets [] or quotes in type field - use plain string values
+
+Example valid workflow:
+{{
+  "nodes": [
+    {{
+      "id": "node-1",
+      "type": "trigger",
+      "data": {{
+        "label": "Trigger",
+        "config": {{"triggerType": "manual"}}
+      }},
+      "position": {{"x": 100, "y": 100}}
+    }},
+    {{
+      "id": "node-2",
+      "type": "swap",
+      "data": {{
+        "label": "Swap ETH to USDC",
+        "config": {{
+          "protocol": "uniswap",
+          "fromToken": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+          "toToken": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "fromTokenDecimals": "18",
+          "amount": "",
+          "slippage": "0.5",
+          "chain": "base"
+        }}
+      }},
+      "position": {{"x": 350, "y": 100}}
+    }}
+  ],
+  "edges": [
+    {{
+      "id": "edge-1",
+      "source": "node-1",
+      "target": "node-2",
+      "sourceHandle": "output",
+      "targetHandle": "input"
+    }}
+  ]
+}}
+
+Respond with ONLY valid JSON, no markdown code blocks, no explanations."""
 
         try:
             response = requests.post(
                 f"{self.base_url}/chat/completions",
                 headers=self.headers,
                 json={
-                    "model": "gpt-4",
+                    "model": "asi1-mini",
                     "messages": [
-                        {"role": "system", "content": "You are a DeFi workflow architect. Generate valid JSON workflows."},
+                        {"role": "system", "content": "You are a DeFi workflow architect. Generate ONLY what the user explicitly requests. Do NOT add extra helpful steps like transfers unless specifically asked. Output valid JSON only."},
                         {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.5,
-                    "max_tokens": 1500
+                    ]
                 },
                 timeout=30
             )
@@ -156,6 +241,7 @@ Respond with ONLY valid JSON, no explanation."""
             response.raise_for_status()
             result = response.json()
             
+            # ASI:One response format
             content = result['choices'][0]['message']['content']
             
             # Extract JSON from response (might be wrapped in code blocks)
@@ -200,12 +286,10 @@ in 2-3 sentences. Focus on the user's goal and the steps taken."""
                 f"{self.base_url}/chat/completions",
                 headers=self.headers,
                 json={
-                    "model": "gpt-4",
+                    "model": "asi1-mini",
                     "messages": [
                         {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.7,
-                    "max_tokens": 200
+                    ]
                 },
                 timeout=20
             )

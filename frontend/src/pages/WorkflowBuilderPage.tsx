@@ -22,6 +22,7 @@ import { POPULAR_TOKENS } from '../config/tokens';
 import { showToast } from '../lib/toast';
 import { getTokensForChain, findTokenByAddress } from '../config/tokens';
 import { AIWorkflowBuilder } from '../components/AIWorkflowBuilder';
+import { WorkflowCreationModal } from '../components/WorkflowCreationModal';
 
 // Custom node component with dynamic handles based on node type
 const CustomNode = ({ data }: any) => {
@@ -989,10 +990,14 @@ export default function WorkflowBuilderPage() {
   const [saving, setSaving] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [showAIBuilder, setShowAIBuilder] = useState(false);
+  const [showCreationModal, setShowCreationModal] = useState(false);
 
   useEffect(() => {
     if (id && id !== 'new') {
       loadWorkflow(id);
+    } else if (id === 'new') {
+      // Show creation modal when creating a new workflow
+      setShowCreationModal(true);
     }
   }, [id]);
 
@@ -1310,6 +1315,12 @@ export default function WorkflowBuilderPage() {
                 <span className="font-semibold">{nodes.length}</span> nodes • <span className="font-semibold">{edges.length}</span> connections
               </div>
               <button
+                onClick={() => setShowAIBuilder(true)}
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-semibold rounded-lg hover:from-blue-500 hover:to-blue-400 transition shadow-md hover:shadow-lg"
+              >
+                Build with AI
+              </button>
+              <button
                 onClick={() => setShowNodePalette(!showNodePalette)}
                 className={`px-4 py-2 font-semibold rounded-lg transition ${
                   showNodePalette
@@ -1317,7 +1328,7 @@ export default function WorkflowBuilderPage() {
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                {showNodePalette ? '← Hide' : 'Show'} Nodes
+                {showNodePalette ? 'Hide' : 'Show'} Node Palette
               </button>
               <button
                 onClick={saveWorkflow}
@@ -1537,6 +1548,31 @@ export default function WorkflowBuilderPage() {
           </div>
         )}
       </div>
+
+      {/* AI Workflow Builder Modal */}
+      <AIWorkflowBuilder
+        isOpen={showAIBuilder}
+        onClose={() => setShowAIBuilder(false)}
+        onWorkflowGenerated={handleAIWorkflowGenerated}
+        currentWorkflow={nodes.length > 0 ? { nodes, edges } : null}
+      />
+
+      {/* Workflow Creation Choice Modal */}
+      <WorkflowCreationModal
+        isOpen={showCreationModal}
+        onClose={() => {
+          setShowCreationModal(false);
+          // If user closes without choosing, they can still build manually
+        }}
+        onStartWithAI={() => {
+          setShowCreationModal(false);
+          setShowAIBuilder(true);
+        }}
+        onBuildManually={() => {
+          setShowCreationModal(false);
+          // Canvas is already empty and ready
+        }}
+      />
     </div>
   );
 }

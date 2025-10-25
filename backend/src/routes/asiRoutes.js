@@ -5,21 +5,24 @@
  */
 
 import express from 'express';
+import { vincentHandler } from '../config/vincent.js';
+import { getPKPInfo } from '@lit-protocol/vincent-app-sdk/jwt';
 import {
   generateWorkflowFromNL,
   queryKnowledgeGraph,
   searchAgents,
   checkPythonBackendHealth,
 } from '../utils/asiAgents.js';
-import { authenticateToken } from '../controllers/authController.js';
 
 const router = express.Router();/**
  * POST /api/asi/workflow/generate
  * Generate a workflow from natural language description
  */
-router.post('/workflow/generate', authenticateToken, async (req, res) => {
+router.post('/workflow/generate', vincentHandler(async (req, res) => {
   try {
     const { query } = req.body;
+    const { decodedJWT } = req.vincentUser;
+    const pkpInfo = getPKPInfo(decodedJWT);
     
     if (!query) {
       return res.status(400).json({
@@ -28,12 +31,12 @@ router.post('/workflow/generate', authenticateToken, async (req, res) => {
       });
     }
 
-    console.log(`🤖 [ASI] Generating workflow for user: ${req.user.email}`);
+    console.log(`[ASI] Generating workflow for user: ${pkpInfo.ethAddress}`);
     console.log(`   Query: "${query}"`);
 
-    const result = await generateWorkflowFromNL(query, req.user.ethAddress);
+    const result = await generateWorkflowFromNL(query, pkpInfo.ethAddress);
 
-    console.log(`✅ [ASI] Workflow generated successfully`);
+    console.log(`[ASI] Workflow generated successfully`);
     console.log(`   Strategy: ${result.strategy || 'custom'}`);
     console.log(`   Intent: ${result.intent}`);
 
@@ -42,20 +45,20 @@ router.post('/workflow/generate', authenticateToken, async (req, res) => {
       ...result,
     });
   } catch (error) {
-    console.error('❌ [ASI] Error generating workflow:', error);
+    console.error('[ASI] Error generating workflow:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to generate workflow',
       error: error.message,
     });
   }
-});
+}));
 
 /**
  * POST /api/asi/knowledge/query
  * Query the MeTTa knowledge graph
  */
-router.post('/knowledge/query', authenticateToken, async (req, res) => {
+router.post('/knowledge/query', vincentHandler(async (req, res) => {
   try {
     const { type, query } = req.body;
     
@@ -66,33 +69,35 @@ router.post('/knowledge/query', authenticateToken, async (req, res) => {
       });
     }
 
-    console.log(`📚 [ASI] Querying knowledge graph: ${type}(${query})`);
+    console.log(`[ASI] Querying knowledge graph: ${type}(${query})`);
 
     const result = await queryKnowledgeGraph(type, query);
 
-    console.log(`✅ [ASI] Query successful, results: ${result.length}`);
+    console.log(`[ASI] Query successful, results: ${result.length}`);
 
     res.json({
       success: true,
       result,
     });
   } catch (error) {
-    console.error('❌ [ASI] Error querying knowledge graph:', error);
+    console.error('[ASI] Error querying knowledge graph:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to query knowledge graph',
       error: error.message,
     });
   }
-});
+}));
 
 /**
  * POST /api/asi/workflow/refine
  * Refine an existing workflow based on user feedback
  */
-router.post('/workflow/refine', authenticateToken, async (req, res) => {
+router.post('/workflow/refine', vincentHandler(async (req, res) => {
   try {
     const { query, currentWorkflow, conversationHistory = [] } = req.body;
+    const { decodedJWT } = req.vincentUser;
+    const pkpInfo = getPKPInfo(decodedJWT);
     
     if (!query || !currentWorkflow) {
       return res.status(400).json({
@@ -101,35 +106,35 @@ router.post('/workflow/refine', authenticateToken, async (req, res) => {
       });
     }
 
-    console.log(`🔄 [ASI] Refining workflow for user: ${req.user.email}`);
+    console.log(`[ASI] Refining workflow for user: ${pkpInfo.ethAddress}`);
     console.log(`   Feedback: "${query}"`);
 
-    const result = await generateWorkflowFromNL(query, req.user.ethAddress, {
+    const result = await generateWorkflowFromNL(query, pkpInfo.ethAddress, {
       currentWorkflow,
       conversationHistory,
     });
 
-    console.log(`✅ [ASI] Workflow refined successfully`);
+    console.log(`[ASI] Workflow refined successfully`);
 
     res.json({
       success: true,
       ...result,
     });
   } catch (error) {
-    console.error('❌ [ASI] Error refining workflow:', error);
+    console.error('[ASI] Error refining workflow:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to refine workflow',
       error: error.message,
     });
   }
-});
+}));
 
 /**
  * POST /api/asi/agents/search
  * Search for agents on Agentverse
  */
-router.post('/agents/search', authenticateToken, async (req, res) => {
+router.post('/agents/search', vincentHandler(async (req, res) => {
   try {
     const { query, semantic = false } = req.body;
     
@@ -140,25 +145,25 @@ router.post('/agents/search', authenticateToken, async (req, res) => {
       });
     }
 
-    console.log(`🔍 [ASI] Searching for agents: "${query}" (semantic: ${semantic})`);
+    console.log(`[ASI] Searching for agents: "${query}" (semantic: ${semantic})`);
 
     const agents = await searchAgents(query, semantic);
 
-    console.log(`✅ [ASI] Found ${agents.length} agents`);
+    console.log(`[ASI] Found ${agents.length} agents`);
 
     res.json({
       success: true,
       agents,
     });
   } catch (error) {
-    console.error('❌ [ASI] Error searching agents:', error);
+    console.error('[ASI] Error searching agents:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to search agents',
       error: error.message,
     });
   }
-});
+}));
 
 /**
  * GET /api/asi/health

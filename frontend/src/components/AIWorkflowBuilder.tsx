@@ -104,8 +104,7 @@ export function AIWorkflowBuilder({ isOpen, onClose, onWorkflowGenerated, curren
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-              <span className="text-3xl">🤖</span>
+            <h2 className="text-2xl font-bold text-white">
               AI Workflow Builder
             </h2>
             <p className="text-gray-400 text-sm mt-1">
@@ -126,7 +125,6 @@ export function AIWorkflowBuilder({ isOpen, onClose, onWorkflowGenerated, curren
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           {conversation.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-6xl mb-4">💭</div>
               <h3 className="text-xl font-semibold text-white mb-2">
                 Start with a Prompt
               </h3>
@@ -159,9 +157,9 @@ export function AIWorkflowBuilder({ isOpen, onClose, onWorkflowGenerated, curren
                   }`}
                 >
                   <div className="flex items-start gap-2">
-                    <span className="text-xl flex-shrink-0">
-                      {message.role === 'user' ? '👤' : '🤖'}
-                    </span>
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-white text-xs font-bold">
+                      {message.role === 'user' ? 'U' : 'AI'}
+                    </div>
                     <div className="flex-1">
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">
                         {message.content}
@@ -169,7 +167,7 @@ export function AIWorkflowBuilder({ isOpen, onClose, onWorkflowGenerated, curren
                       {message.workflow && (
                         <div className="mt-2 pt-2 border-t border-gray-700">
                           <div className="text-xs text-gray-400">
-                            ✅ Workflow with {message.workflow.nodes?.length || 0} nodes generated
+                            Workflow with {message.workflow.nodes?.length || 0} nodes generated
                           </div>
                         </div>
                       )}
@@ -184,7 +182,9 @@ export function AIWorkflowBuilder({ isOpen, onClose, onWorkflowGenerated, curren
             <div className="flex justify-start">
               <div className="max-w-[80%] rounded-2xl px-4 py-3 bg-gray-800">
                 <div className="flex items-center gap-2">
-                  <span className="text-xl">🤖</span>
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                    AI
+                  </div>
                   <div className="flex gap-1">
                     <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
                     <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
@@ -230,12 +230,10 @@ export function AIWorkflowBuilder({ isOpen, onClose, onWorkflowGenerated, curren
                 </>
               ) : conversation.length === 0 ? (
                 <>
-                  <span>✨</span>
                   <span>Generate</span>
                 </>
               ) : (
                 <>
-                  <span>🔄</span>
                   <span>Refine</span>
                 </>
               )}
@@ -260,7 +258,6 @@ export function AIWorkflowBuilder({ isOpen, onClose, onWorkflowGenerated, curren
                   onClick={handleApply}
                   className="px-6 py-2 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-lg hover:from-green-500 hover:to-green-400 transition-all font-semibold flex items-center gap-2"
                 >
-                  <span>✓</span>
                   Apply Workflow
                 </button>
               )}

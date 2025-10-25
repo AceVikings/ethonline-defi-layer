@@ -267,7 +267,8 @@ async function executeWorkflowAsync(workflow, execution, pkpInfo) {
     
     // Execute nodes starting from trigger
     const executionSteps = [];
-    await executeNode(triggerNode, nodeMap, edgeMap, executionSteps, pkpInfo);
+    const executionContext = new Map(); // Store outputs from each node
+    await executeNode(triggerNode, nodeMap, edgeMap, executionSteps, pkpInfo, executionContext);
     
     // Update execution history with success
     await ExecutionHistory.findByIdAndUpdate(execution._id, {
@@ -300,17 +301,25 @@ async function executeWorkflowAsync(workflow, execution, pkpInfo) {
 }
 
 // Execute a single node and its children
-async function executeNode(node, nodeMap, edgeMap, executionSteps, pkpInfo) {
+async function executeNode(node, nodeMap, edgeMap, executionSteps, pkpInfo, executionContext = new Map()) {
   const stepStartTime = new Date();
   console.log(`\n┌─ Executing Node: ${node.label || node.type}`);
   console.log(`│  ID: ${node.id}`);
   console.log(`│  Type: ${node.type}`);
   console.log(`│  Config:`, JSON.stringify(node.config || {}, null, 2).split('\n').map((line, i) => i === 0 ? line : `│  ${line}`).join('\n'));
   
+  // Get output from previous node(s) if available
+  const incomingEdges = Array.from(edgeMap.values()).flat().filter(edge => edge.to === node.id);
+  const previousOutputs = incomingEdges.map(edge => executionContext.get(edge.from)).filter(Boolean);
+  
+  if (previousOutputs.length > 0) {
+    console.log(`│  Previous outputs:`, JSON.stringify(previousOutputs, null, 2).split('\n').map((line, i) => i === 0 ? line : `│  ${line}`).join('\n'));
+  }
+  
   try {
     let result;
     
-    // Execute based on node type
+    // Execute based on node type, passing previous outputs
     switch (node.type) {
       case 'trigger':
         result = { success: true, message: 'Workflow triggered manually' };
@@ -318,33 +327,36 @@ async function executeNode(node, nodeMap, edgeMap, executionSteps, pkpInfo) {
         break;
         
       case 'swap':
-        result = await executeSwapNode(node, pkpInfo);
+        result = await executeSwapNode(node, pkpInfo, previousOutputs);
         console.log(`│  ✓ Swap executed:`, result);
         break;
         
       case 'aave':
-        result = await executeAaveNode(node, pkpInfo);
+        result = await executeAaveNode(node, pkpInfo, previousOutputs);
         console.log(`│  ✓ Aave executed:`, result);
         break;
         
       case 'transfer':
-        result = await executeTransferNode(node, pkpInfo);
+        result = await executeTransferNode(node, pkpInfo, previousOutputs);
         console.log(`│  ✓ Transfer executed:`, result);
         break;
         
       case 'condition':
-        result = await executeConditionNode(node, pkpInfo);
+        result = await executeConditionNode(node, pkpInfo, previousOutputs);
         console.log(`│  ✓ Condition evaluated:`, result);
         break;
         
       case 'ai':
-        result = await executeAINode(node, pkpInfo);
+        result = await executeAINode(node, pkpInfo, previousOutputs);
         console.log(`│  ✓ AI executed:`, result);
         break;
         
       default:
         throw new Error(`Unknown node type: ${node.type}`);
     }
+    
+    // Store output in execution context for next nodes
+    executionContext.set(node.id, result);
     
     const stepDuration = new Date() - stepStartTime;
     console.log(`│  Duration: ${stepDuration}ms`);
@@ -374,7 +386,7 @@ async function executeNode(node, nodeMap, edgeMap, executionSteps, pkpInfo) {
         console.log(`   → Following ${result.conditionMet ? 'TRUE' : 'FALSE'} branch to node ${branchEdge.to}`);
         const nextNode = nodeMap.get(branchEdge.to);
         if (nextNode) {
-          await executeNode(nextNode, nodeMap, edgeMap, executionSteps, pkpInfo);
+          await executeNode(nextNode, nodeMap, edgeMap, executionSteps, pkpInfo, executionContext);
         }
       } else {
         console.log(`   → No ${result.conditionMet ? 'TRUE' : 'FALSE'} branch found`);
@@ -385,7 +397,7 @@ async function executeNode(node, nodeMap, edgeMap, executionSteps, pkpInfo) {
         console.log(`   → Following edge to node ${edge.to}`);
         const nextNode = nodeMap.get(edge.to);
         if (nextNode) {
-          await executeNode(nextNode, nodeMap, edgeMap, executionSteps, pkpInfo);
+          await executeNode(nextNode, nodeMap, edgeMap, executionSteps, pkpInfo, executionContext);
         }
       }
     }
@@ -407,6 +419,27 @@ async function executeNode(node, nodeMap, edgeMap, executionSteps, pkpInfo) {
     
     throw error; // Propagate error to stop workflow
   }
+}
+
+// Helper function to extract token symbol from address or existing symbol
+function getTokenSymbol(tokenAddressOrSymbol) {
+  if (!tokenAddressOrSymbol) return 'UNKNOWN';
+  
+  // If it's already a symbol (short string without 0x), return it
+  if (!tokenAddressOrSymbol.startsWith('0x')) {
+    return tokenAddressOrSymbol;
+  }
+  
+  // Token symbol mapping (Base network)
+  const tokenMap = {
+    '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee': 'ETH',
+    '0x4200000000000000000000000000000000000006': 'WETH',
+    '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913': 'USDC',
+    '0xfde4c96c8593536e31f229ea8f37b2ada2699bb2': 'USDT',
+    '0x50c5725949a6f0c72e6c4a641f24049a917db0cb': 'DAI',
+  };
+  
+  return tokenMap[tokenAddressOrSymbol.toLowerCase()] || 'UNKNOWN';
 }
 
 // Node-specific execution functions
@@ -602,6 +635,11 @@ async function executeSwapNode(node, pkpInfo) {
     const swapTxHash = swapExecutionResult.result.swapTxHash;
     console.log(`   ✓ Swap successful: ${swapTxHash}`);
     
+    // Calculate actual amount received (amountOut from quote)
+    const amountOutWei = signedUniswapQuote.quote.amountOut;
+    const toTokenDecimals = config.toTokenDecimals || 18;
+    const amountOut = (BigInt(amountOutWei) / BigInt(10 ** parseInt(toTokenDecimals))).toString();
+    
     return {
       success: true,
       message: 'Swap executed successfully via Uniswap V3',
@@ -615,6 +653,14 @@ async function executeSwapNode(node, pkpInfo) {
       approvalTxHash,
       swapTxHash,
       uniswapRouter: uniswapRouterAddress,
+      // Standardized output data for next nodes
+      output: {
+        tokenReceived: normalizedToToken,
+        tokenSymbol: getTokenSymbol(config.toToken), // Helper to extract symbol
+        amountReceived: amountOut,
+        amountReceivedWei: amountOutWei,
+        decimals: toTokenDecimals,
+      }
     };
   } catch (error) {
     console.error(`   ✗ Swap failed:`, error.message);
@@ -622,23 +668,66 @@ async function executeSwapNode(node, pkpInfo) {
   }
 }
 
-async function executeAaveNode(node, pkpInfo) {
+async function executeAaveNode(node, pkpInfo, previousOutputs = []) {
   // TODO: Implement actual Aave interaction
   const config = node.config || {};
   
-  if (!config.action || !config.asset || !config.amount) {
-    throw new Error('Aave node missing required configuration (action, asset, amount)');
+  if (!config.action || !config.asset) {
+    throw new Error('Aave node missing required configuration (action, asset)');
   }
   
-  console.log('   [Aave] Executing Aave:', config);
+  // Get amount from previous node if not specified
+  let amount = config.amount;
+  if (!amount || amount === '') {
+    // Try to get amount from previous swap/withdraw node
+    const previousOutput = previousOutputs.find(out => out && out.output);
+    if (previousOutput && previousOutput.output.amountReceived) {
+      amount = previousOutput.output.amountReceived;
+      console.log(`   [Aave] Using amount from previous node: ${amount}`);
+    }
+  }
+  
+  if (!amount) {
+    throw new Error('Aave node missing amount (not specified and no previous output)');
+  }
+  
+  console.log('   [Aave] Executing Aave:', config.action, config.asset, amount);
+  
+  // Determine output based on action
+  let output;
+  if (config.action === 'supply') {
+    output = {
+      aTokenReceived: `a${config.asset}`,
+      amountReceived: amount,
+      tokenSymbol: `a${config.asset}`,
+    };
+  } else if (config.action === 'withdraw') {
+    output = {
+      tokenReceived: config.asset,
+      amountReceived: amount,
+      tokenSymbol: config.asset,
+    };
+  } else if (config.action === 'borrow') {
+    output = {
+      tokenBorrowed: config.asset,
+      amountBorrowed: amount,
+      tokenSymbol: config.asset,
+    };
+  } else if (config.action === 'repay') {
+    output = {
+      tokenRepaid: config.asset,
+      amountRepaid: amount,
+    };
+  }
   
   return {
     success: true,
-    message: 'Aave action executed (stub)',
+    message: `Aave ${config.action} executed (stub)`,
     action: config.action,
     asset: config.asset,
-    amount: config.amount,
+    amount: amount,
     useAsCollateral: config.useAsCollateral || false,
+    output,
   };
 }
 

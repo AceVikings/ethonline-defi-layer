@@ -1,18 +1,320 @@
 """
-DeFi Workflow RAG System
+DeFi RAG (Retrieval-Augmented Generation) System
 
-This module provides retrieval and query functionality for the MeTTa knowledge graph,
-enabling intelligent workflow generation based on user intents.
+This module provides query interfaces for the MeTTa knowledge graph,
+enabling structured retrieval of DeFi workflow information.
 """
 
 from hyperon import MeTTa
+from typing import List, Dict, Any, Optional
 
 
 class DeFiWorkflowRAG:
     """
-    Retrieval-Augmented Generation system for DeFi workflow creation.
-    Queries the MeTTa knowledge graph to retrieve relevant information.
+    RAG system for querying DeFi knowledge graph using MeTTa.
     """
+    
+    def __init__(self, metta_instance: MeTTa):
+        """
+        Initialize RAG with MeTTa instance.
+        
+        Args:
+            metta_instance: Initialized MeTTa knowledge graph
+        """
+        self.metta = metta_instance
+    
+    # ============================================
+    # NODE TYPE QUERIES
+    # ============================================
+    
+    def get_all_node_types(self) -> List[Dict[str, str]]:
+        """
+        Get all available node types.
+        
+        Returns:
+            List of node type dictionaries with type, label, description, color
+        """
+        query_str = '!(match &self (node-type $type $label $desc $color) ($type $label $desc $color))'
+        results = self.metta.run(query_str)
+        
+        # Parse MeTTa results - format: [[[type, label, desc, color], [type, label, desc, color], ...]]
+        node_types = []
+        if results and len(results) > 0:
+            for result_set in results:
+                if isinstance(result_set, list):
+                    for item in result_set:
+                        if isinstance(item, list) and len(item) >= 4:
+                            node_types.append({
+                                "type": str(item[0]).strip('"'),
+                                "label": str(item[1]).strip('"'),
+                                "description": str(item[2]).strip('"'),
+                                "color": str(item[3]).strip('"')
+                            })
+        
+        return node_types
+    
+    def get_node_config(self, node_type: str) -> Dict[str, str]:
+        """
+        Get default configuration for a node type.
+        
+        Args:
+            node_type: Type of node (e.g., "swap", "aave")
+            
+        Returns:
+            Dictionary of config field -> default value
+        """
+        query_str = f'!(match &self (node-config {node_type} $field $value) ($field $value))'
+        results = self.metta.run(query_str)
+        
+        config = {}
+        for result in results:
+            if result and len(result) > 0 and len(result[0]) >= 2:
+                field = str(result[0][0])
+                value = str(result[0][1])
+                config[field] = value
+        
+        return config
+    
+    # ============================================
+    # STRATEGY QUERIES
+    # ============================================
+    
+    def find_strategy_for_intent(self, user_query: str) -> Optional[List[Any]]:
+        """
+        Find a strategy that matches user intent.
+        
+        Args:
+            user_query: Natural language query
+            
+        Returns:
+            Strategy information if found
+        """
+        # Extract keywords from query
+        query_lower = user_query.lower()
+        
+        # Query for strategies
+        if "yield" in query_lower or "maximize" in query_lower:
+            return self.query_strategy("maximize_yield_usdc")
+        elif "dca" in query_lower or "dollar cost" in query_lower:
+            return self.query_strategy("dollar_cost_average")
+        elif "arbitrage" in query_lower:
+            return self.query_strategy("arbitrage_dex")
+        elif "lend" in query_lower or "supply" in query_lower or "borrow" in query_lower:
+            return self.query_strategy("lending_strategy")
+        elif "rebalance" in query_lower:
+            return self.query_strategy("conditional_rebalance")
+        
+        return None
+    
+    def query_strategy(self, strategy_name: str) -> List[Any]:
+        """
+        Query for a specific strategy.
+        
+        Args:
+            strategy_name: Name of the strategy
+            
+        Returns:
+            Strategy details (node sequence)
+        """
+        query_str = f'!(match &self (strategy {strategy_name} $desc $sequence) $sequence)'
+        results = self.metta.run(query_str)
+        return results
+    
+    def query_all_strategies(self) -> List[Dict[str, str]]:
+        """
+        Get all available strategies.
+        
+        Returns:
+            List of strategy dictionaries
+        """
+        query_str = '!(match &self (strategy $name $desc $sequence) ($name $desc $sequence))'
+        results = self.metta.run(query_str)
+        
+        print(f"[DEBUG] query_all_strategies raw results: {results}")
+        print(f"[DEBUG] results type: {type(results)}")
+        
+        # Parse MeTTa results - format: [[[name, desc, sequence], [name, desc, sequence], ...]]
+        strategies = []
+        if results and len(results) > 0:
+            print(f"[DEBUG] First result: {results[0]}")
+            print(f"[DEBUG] First result type: {type(results[0])}")
+            
+            for result_set in results:
+                if isinstance(result_set, list):
+                    for item in result_set:
+                        print(f"[DEBUG] Processing item: {item}, type: {type(item)}")
+                        if isinstance(item, list) and len(item) >= 3:
+                            strategies.append({
+                                "name": str(item[0]).strip('"'),
+                                "description": str(item[1]).strip('"'),
+                                "sequence": str(item[2]).strip('"')
+                            })
+        
+        print(f"[DEBUG] Final strategies: {strategies}")
+        return strategies
+    
+    # ============================================
+    # OPERATION QUERIES
+    # ============================================
+    
+    def query_operation(self, keyword: str) -> List[Any]:
+        """
+        Query for a specific operation.
+        
+        Args:
+            keyword: Operation keyword (e.g., "swap_tokens")
+            
+        Returns:
+            Operation details (node type)
+        """
+        query_str = f'!(match &self (operation {keyword} $node_type $desc) $node_type)'
+        results = self.metta.run(query_str)
+        return results
+    
+    def get_all_operations(self) -> List[Dict[str, str]]:
+        """
+        Get all available operations.
+        
+        Returns:
+            List of operation dictionaries
+        """
+        query_str = '!(match &self (operation $keyword $node_type $desc) ($keyword $node_type $desc))'
+        results = self.metta.run(query_str)
+        
+        # Parse MeTTa results
+        operations = []
+        if results and len(results) > 0:
+            for result_set in results:
+                if isinstance(result_set, list):
+                    for item in result_set:
+                        if isinstance(item, list) and len(item) >= 3:
+                            operations.append({
+                                "keyword": str(item[0]).strip('"'),
+                                "node_type": str(item[1]).strip('"'),
+                                "description": str(item[2]).strip('"')
+                            })
+        
+        return operations
+    
+    # ============================================
+    # PROTOCOL QUERIES
+    # ============================================
+    
+    def query_protocols(self) -> List[Dict[str, str]]:
+        """
+        Get all DeFi protocols.
+        
+        Returns:
+            List of protocol dictionaries
+        """
+        query_str = '!(match &self (protocol $name $type $chains) ($name $type $chains))'
+        results = self.metta.run(query_str)
+        
+        # Parse MeTTa results
+        protocols = []
+        if results and len(results) > 0:
+            for result_set in results:
+                if isinstance(result_set, list):
+                    for item in result_set:
+                        if isinstance(item, list) and len(item) >= 3:
+                            protocols.append({
+                                "name": str(item[0]).strip('"'),
+                                "type": str(item[1]).strip('"'),
+                                "chains": str(item[2]).strip('"')
+                            })
+        
+        return protocols
+    
+    # ============================================
+    # TOKEN & CHAIN QUERIES
+    # ============================================
+    
+    def query_token(self, symbol: str) -> List[Any]:
+        """
+        Query for token information.
+        
+        Args:
+            symbol: Token symbol (e.g., "USDC")
+            
+        Returns:
+            Token details
+        """
+        query_str = f'!(match &self (token {symbol} $name $decimals) ($name $decimals))'
+        results = self.metta.run(query_str)
+        return results
+    
+    def get_all_tokens(self) -> List[Dict[str, str]]:
+        """
+        Get all supported tokens.
+        
+        Returns:
+            List of token dictionaries
+        """
+        query_str = '!(match &self (token $symbol $name $decimals) ($symbol $name $decimals))'
+        results = self.metta.run(query_str)
+        
+        # Parse MeTTa results
+        tokens = []
+        if results and len(results) > 0:
+            for result_set in results:
+                if isinstance(result_set, list):
+                    for item in result_set:
+                        if isinstance(item, list) and len(item) >= 3:
+                            tokens.append({
+                                "symbol": str(item[0]).strip('"'),
+                                "name": str(item[1]).strip('"'),
+                                "decimals": str(item[2]).strip('"')
+                            })
+        
+        return tokens
+    
+    def get_all_chains(self) -> List[Dict[str, str]]:
+        """
+        Get all supported blockchain networks.
+        
+        Returns:
+            List of chain dictionaries
+        """
+        query_str = '!(match &self (chain $name $chain_id $testnet) ($name $chain_id $testnet))'
+        results = self.metta.run(query_str)
+        
+        # Parse MeTTa results
+        chains = []
+        if results and len(results) > 0:
+            for result_set in results:
+                if isinstance(result_set, list):
+                    for item in result_set:
+                        if isinstance(item, list) and len(item) >= 3:
+                            chains.append({
+                                "name": str(item[0]).strip('"'),
+                                "chainId": str(item[1]).strip('"'),
+                                "testnet": str(item[2]).strip('"') == "true"
+                            })
+        
+        return chains
+    
+    # ============================================
+    # KNOWLEDGE EXPANSION
+    # ============================================
+    
+    def add_knowledge(self, relation_type: str, subject: str, object_value: str):
+        """
+        Add new knowledge to the graph.
+        
+        Args:
+            relation_type: Type of relation (e.g., "token", "strategy")
+            subject: Subject of the relation
+            object_value: Object/value of the relation
+        """
+        from hyperon import E, S, ValueAtom
+        
+        self.metta.space().add_atom(E(
+            S(relation_type),
+            S(subject),
+            ValueAtom(object_value)
+        ))
+        
+        print(f"[MeTTa] Added knowledge: ({relation_type} {subject} {object_value})")
     
     def __init__(self, metta_instance: MeTTa):
         self.metta = metta_instance

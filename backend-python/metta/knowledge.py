@@ -1,12 +1,227 @@
 """
-MeTTa Knowledge Graph for DeFi Workflow Strategies
+MeTTa Knowledge Graph for DeFi Workflows
 
-This module initializes a knowledge graph containing information about:
-- Available node types and their capabilities
-- DeFi protocols and supported operations
-- Common workflow patterns and strategies
-- Node configuration requirements
+This module initializes and manages a MeTTa knowledge graph containing:
+- Supported blockchain networks
+- Available tokens
+- DeFi node types with configurations
+- Workflow strategies
+- Protocol information
+
+Knowledge Structure:
+- (node-type <type> <label> <description>)
+- (node-config <type> <field> <default-value>)
+- (token <symbol> <name> <address>)
+- (chain <name> <chain-id> <rpc-url>)
+- (strategy <name> <description> <node-sequence>)
+- (protocol <name> <type> <chains>)
 """
+
+from hyperon import MeTTa, E, S, ValueAtom
+
+
+def get_metta_instance():
+    """Initialize and return a MeTTa instance with DeFi knowledge."""
+    metta = MeTTa()
+    initialize_defi_knowledge(metta)
+    return metta
+
+
+def initialize_defi_knowledge(metta: MeTTa):
+    """
+    Initialize the DeFi knowledge graph with all domain knowledge.
+    
+    Args:
+        metta: MeTTa instance to populate
+    """
+    
+    print("[MeTTa] Initializing DeFi Knowledge Graph...")
+    
+    # ============================================
+    # 1. DEFINE NODE TYPES
+    # ============================================
+    print("[MeTTa] Adding node types...")
+    
+    # Node type definitions: (node-type <type> <label> <description> <color>)
+    node_types = [
+        ("trigger", "Trigger", "Start the workflow execution", "from-yellow-400 to-orange-500"),
+        ("swap", "Token Swap", "Exchange tokens on DEX", "from-blue-400 to-blue-600"),
+        ("aave", "Aave Protocol", "Supply or borrow assets", "from-purple-400 to-purple-600"),
+        ("transfer", "Token Transfer", "Send tokens to address", "from-green-400 to-green-600"),
+        ("condition", "Conditional", "If/else branching logic", "from-pink-400 to-pink-600"),
+        ("ai", "AI Agent", "AI-powered decision making", "from-indigo-400 to-indigo-600"),
+    ]
+    
+    for node_type, label, description, color in node_types:
+        metta.space().add_atom(E(
+            S("node-type"),
+            S(node_type),
+            ValueAtom(label),
+            ValueAtom(description),
+            ValueAtom(color)
+        ))
+    
+    # ============================================
+    # 2. DEFINE NODE CONFIGURATIONS
+    # ============================================
+    print("[MeTTa] Adding node configuration schemas...")
+    
+    # Trigger node config
+    metta.space().add_atom(E(S("node-config"), S("trigger"), S("triggerType"), ValueAtom("manual")))
+    
+    # Swap node config
+    metta.space().add_atom(E(S("node-config"), S("swap"), S("protocol"), ValueAtom("uniswap")))
+    metta.space().add_atom(E(S("node-config"), S("swap"), S("tokenIn"), ValueAtom("ETH")))
+    metta.space().add_atom(E(S("node-config"), S("swap"), S("tokenOut"), ValueAtom("USDC")))
+    metta.space().add_atom(E(S("node-config"), S("swap"), S("amount"), ValueAtom("")))
+    metta.space().add_atom(E(S("node-config"), S("swap"), S("slippage"), ValueAtom("0.5")))
+    
+    # Aave node config
+    metta.space().add_atom(E(S("node-config"), S("aave"), S("action"), ValueAtom("supply")))
+    metta.space().add_atom(E(S("node-config"), S("aave"), S("asset"), ValueAtom("USDC")))
+    metta.space().add_atom(E(S("node-config"), S("aave"), S("amount"), ValueAtom("")))
+    metta.space().add_atom(E(S("node-config"), S("aave"), S("chain"), ValueAtom("base")))
+    
+    # Transfer node config
+    metta.space().add_atom(E(S("node-config"), S("transfer"), S("token"), ValueAtom("USDC")))
+    metta.space().add_atom(E(S("node-config"), S("transfer"), S("recipient"), ValueAtom("")))
+    metta.space().add_atom(E(S("node-config"), S("transfer"), S("amount"), ValueAtom("")))
+    
+    # Condition node config
+    metta.space().add_atom(E(S("node-config"), S("condition"), S("leftValue"), ValueAtom("")))
+    metta.space().add_atom(E(S("node-config"), S("condition"), S("operator"), ValueAtom(">")))
+    metta.space().add_atom(E(S("node-config"), S("condition"), S("rightValue"), ValueAtom("")))
+    
+    # AI node config
+    metta.space().add_atom(E(S("node-config"), S("ai"), S("systemPrompt"), ValueAtom("You are a DeFi assistant.")))
+    metta.space().add_atom(E(S("node-config"), S("ai"), S("userPrompt"), ValueAtom("")))
+    metta.space().add_atom(E(S("node-config"), S("ai"), S("outputFormat"), ValueAtom("text")))
+    
+    # ============================================
+    # 3. DEFINE TOKENS
+    # ============================================
+    print("[MeTTa] Adding token definitions...")
+    
+    # Common tokens: (token <symbol> <name> <decimals>)
+    tokens = [
+        ("ETH", "Ethereum", "18"),
+        ("WETH", "Wrapped Ethereum", "18"),
+        ("USDC", "USD Coin", "6"),
+        ("USDT", "Tether USD", "6"),
+        ("DAI", "Dai Stablecoin", "18"),
+        ("WBTC", "Wrapped Bitcoin", "8"),
+        ("UNI", "Uniswap", "18"),
+        ("AAVE", "Aave Token", "18"),
+        ("LINK", "Chainlink", "18"),
+    ]
+    
+    for symbol, name, decimals in tokens:
+        metta.space().add_atom(E(
+            S("token"),
+            S(symbol),
+            ValueAtom(name),
+            ValueAtom(decimals)
+        ))
+    
+    # ============================================
+    # 4. DEFINE BLOCKCHAIN NETWORKS
+    # ============================================
+    print("[MeTTa] Adding blockchain networks...")
+    
+    # Chains: (chain <name> <chain-id> <testnet?>)
+    chains = [
+        ("ethereum", "1", "false"),
+        ("base", "8453", "false"),
+        ("optimism", "10", "false"),
+        ("arbitrum", "42161", "false"),
+        ("polygon", "137", "false"),
+        ("avalanche", "43114", "false"),
+        ("bsc", "56", "false"),
+        ("sepolia", "11155111", "true"),
+        ("base-sepolia", "84532", "true"),
+    ]
+    
+    for name, chain_id, is_testnet in chains:
+        metta.space().add_atom(E(
+            S("chain"),
+            S(name),
+            ValueAtom(chain_id),
+            ValueAtom(is_testnet)
+        ))
+    
+    # ============================================
+    # 5. DEFINE DEFI STRATEGIES
+    # ============================================
+    print("[MeTTa] Adding DeFi strategies...")
+    
+    # Strategies: (strategy <name> <description> <node-sequence>)
+    strategies = [
+        ("maximize_yield_usdc", "Maximize yield on USDC", "trigger -> swap -> aave"),
+        ("dollar_cost_average", "DCA into ETH from USDC", "trigger -> swap"),
+        ("arbitrage_dex", "Arbitrage between DEXs", "trigger -> swap -> swap"),
+        ("lending_strategy", "Supply assets to lending protocol", "trigger -> aave"),
+        ("swap_and_transfer", "Swap tokens and send to address", "trigger -> swap -> transfer"),
+        ("conditional_rebalance", "Rebalance based on conditions", "trigger -> condition -> swap -> aave"),
+    ]
+    
+    for name, description, sequence in strategies:
+        metta.space().add_atom(E(
+            S("strategy"),
+            S(name),
+            ValueAtom(description),
+            ValueAtom(sequence)
+        ))
+    
+    # ============================================
+    # 6. DEFINE PROTOCOL OPERATIONS
+    # ============================================
+    print("[MeTTa] Adding protocol operations...")
+    
+    # Operations: (operation <keyword> <node-type> <description>)
+    operations = [
+        ("swap_tokens", "swap", "Exchange one token for another"),
+        ("supply_to_aave", "aave", "Supply assets to Aave V3"),
+        ("borrow_from_aave", "aave", "Borrow assets from Aave V3"),
+        ("transfer_tokens", "transfer", "Send tokens to an address"),
+        ("check_condition", "condition", "Evaluate a condition"),
+        ("ai_decision", "ai", "Make AI-powered decision"),
+    ]
+    
+    for keyword, node_type, description in operations:
+        metta.space().add_atom(E(
+            S("operation"),
+            S(keyword),
+            S(node_type),
+            ValueAtom(description)
+        ))
+    
+    # ============================================
+    # 7. DEFINE PROTOCOLS
+    # ============================================
+    print("[MeTTa] Adding DeFi protocols...")
+    
+    # Protocols: (protocol <name> <type> <supported-chains>)
+    protocols = [
+        ("uniswap", "dex", "ethereum,base,optimism,arbitrum,polygon"),
+        ("1inch", "dex", "ethereum,base,optimism,arbitrum,polygon,bsc,avalanche"),
+        ("aave", "lending", "ethereum,base,optimism,arbitrum,polygon,avalanche"),
+    ]
+    
+    for name, protocol_type, chains_str in protocols:
+        metta.space().add_atom(E(
+            S("protocol"),
+            S(name),
+            S(protocol_type),
+            ValueAtom(chains_str)
+        ))
+    
+    print("[MeTTa] ✓ Knowledge graph initialized successfully!")
+    print(f"[MeTTa] - {len(node_types)} node types")
+    print(f"[MeTTa] - {len(tokens)} tokens")
+    print(f"[MeTTa] - {len(chains)} blockchain networks")
+    print(f"[MeTTa] - {len(strategies)} strategies")
+    print(f"[MeTTa] - {len(operations)} operations")
+    print(f"[MeTTa] - {len(protocols)} protocols")
 
 from hyperon import MeTTa, E, S, ValueAtom
 
