@@ -132,6 +132,60 @@ class ApiClient {
       `/api/workflows/${workflowId}/executions`
     );
   }
+
+  // ASI Agent endpoints
+  async generateWorkflowFromPrompt(query: string) {
+    return this.request<{
+      success: boolean;
+      workflow?: { nodes: any[]; edges: any[] };
+      explanation?: string;
+      strategy?: string;
+      intent?: string;
+      keyword?: string;
+      error?: string;
+    }>('/api/asi/workflow/generate', {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+    });
+  }
+
+  async refineWorkflow(
+    query: string,
+    currentWorkflow: { nodes: any[]; edges: any[] },
+    conversationHistory: Array<{ role: string; content: string; workflow?: any }> = []
+  ) {
+    return this.request<{
+      success: boolean;
+      workflow?: { nodes: any[]; edges: any[] };
+      explanation?: string;
+      strategy?: string;
+      intent?: string;
+      keyword?: string;
+      error?: string;
+    }>('/api/asi/workflow/refine', {
+      method: 'POST',
+      body: JSON.stringify({ query, currentWorkflow, conversationHistory }),
+    });
+  }
+
+  async searchAgents(query: string, semantic: boolean = false) {
+    return this.request<{
+      success: boolean;
+      agents: any[];
+      error?: string;
+    }>('/api/asi/agents/search', {
+      method: 'POST',
+      body: JSON.stringify({ query, semantic }),
+    });
+  }
+
+  async checkASIHealth() {
+    return this.request<{
+      success: boolean;
+      python_backend_healthy: boolean;
+      message?: string;
+    }>('/api/asi/health');
+  }
 }
 
 export const apiClient = new ApiClient();
