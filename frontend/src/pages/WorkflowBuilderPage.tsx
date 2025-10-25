@@ -136,10 +136,17 @@ const NODE_TYPES = [
   },
   {
     type: 'ai',
-    label: 'AI Agent',
+    label: 'ASI:One',
     icon: 'ai',
     color: 'from-indigo-400 to-indigo-600',
-    description: 'AI-powered decision making',
+    description: 'ASI:One AI analysis and insights',
+  },
+  {
+    type: 'mcp',
+    label: 'MCP Tool',
+    icon: 'mcp',
+    color: 'from-cyan-400 to-cyan-600',
+    description: 'Model Context Protocol integration',
   },
 ];
 
@@ -901,44 +908,185 @@ const AIConfig = ({ config, onUpdate }: { config: any; onUpdate: (config: any) =
   return (
     <div className="space-y-3">
       <div>
-        <label className="block text-xs font-semibold text-gray-700 mb-2">System Prompt</label>
+        <label className="block text-xs font-semibold text-gray-700 mb-2">
+          Prompt
+          <span className="ml-2 text-indigo-600 font-normal">(ASI:One AI)</span>
+        </label>
+        <textarea
+          value={config.prompt || ''}
+          onChange={(e) => onUpdate({ ...config, prompt: e.target.value })}
+          placeholder="Analyze the previous transaction results and provide insights..."
+          rows={4}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 focus:outline-none resize-none"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-2">System Prompt (Optional)</label>
         <textarea
           value={config.systemPrompt || ''}
           onChange={(e) => onUpdate({ ...config, systemPrompt: e.target.value })}
-          placeholder="You are a DeFi assistant..."
-          rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none resize-none"
+          placeholder="You are a helpful DeFi analyst that provides clear insights..."
+          rows={2}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 focus:outline-none resize-none"
         />
       </div>
       
-      <div>
-        <label className="block text-xs font-semibold text-gray-700 mb-2">User Prompt Template</label>
-        <textarea
-          value={config.userPrompt || ''}
-          onChange={(e) => onUpdate({ ...config, userPrompt: e.target.value })}
-          placeholder="Analyze this data: {data}"
-          rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none resize-none"
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-2">Temperature</label>
+          <input
+            type="number"
+            value={config.temperature || 0.7}
+            onChange={(e) => onUpdate({ ...config, temperature: parseFloat(e.target.value) })}
+            min="0"
+            max="1"
+            step="0.1"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-2">Max Tokens</label>
+          <input
+            type="number"
+            value={config.maxTokens || 500}
+            onChange={(e) => onUpdate({ ...config, maxTokens: parseInt(e.target.value) })}
+            min="50"
+            max="2000"
+            step="50"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 focus:outline-none"
+          />
+        </div>
       </div>
       
+      <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+        <p className="text-xs text-indigo-800">
+          💡 ASI:One will analyze outputs from previous nodes automatically
+        </p>
+      </div>
+    </div>
+  );
+};
+
+const MCPConfig = ({ config, onUpdate }: { config: any; onUpdate: (config: any) => void }) => {
+  const mcpServers = [
+    { value: 'blockscout', label: 'Blockscout (Blockchain Explorer)' },
+    // Future MCP servers can be added here
+  ];
+
+  const blockscoutTools = [
+    { value: 'get_transactions', label: 'Get Transaction History', params: ['address', 'chainId', 'limit'] },
+    { value: 'get_balance', label: 'Get Token Balances', params: ['address', 'chainId'] },
+    { value: 'get_token_info', label: 'Get Token Information', params: ['tokenAddress', 'chainId'] },
+  ];
+
+  const currentTool = blockscoutTools.find(t => t.value === config.tool);
+
+  return (
+    <div className="space-y-3">
       <div>
-        <label className="block text-xs font-semibold text-gray-700 mb-2">Output Format</label>
+        <label className="block text-xs font-semibold text-gray-700 mb-2">MCP Server</label>
         <select
-          value={config.outputFormat || 'text'}
-          onChange={(e) => onUpdate({ ...config, outputFormat: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
+          value={config.mcpServer || ''}
+          onChange={(e) => onUpdate({ ...config, mcpServer: e.target.value, tool: '', parameters: {} })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-cyan-500 focus:outline-none"
         >
-          <option value="text">Text</option>
-          <option value="json">JSON</option>
-          <option value="number">Number</option>
-          <option value="boolean">Boolean</option>
+          <option value="">Select MCP Server...</option>
+          {mcpServers.map(server => (
+            <option key={server.value} value={server.value}>{server.label}</option>
+          ))}
         </select>
       </div>
+
+      {config.mcpServer === 'blockscout' && (
+        <>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-2">Tool</label>
+            <select
+              value={config.tool || ''}
+              onChange={(e) => onUpdate({ ...config, tool: e.target.value, parameters: {} })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-cyan-500 focus:outline-none"
+            >
+              <option value="">Select Tool...</option>
+              {blockscoutTools.map(tool => (
+                <option key={tool.value} value={tool.value}>{tool.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {config.tool && currentTool && (
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-gray-700">Parameters</label>
+              
+              {currentTool.params.includes('address') && (
+                <div>
+                  <input
+                    type="text"
+                    value={config.parameters?.address || ''}
+                    onChange={(e) => onUpdate({ 
+                      ...config, 
+                      parameters: { ...config.parameters, address: e.target.value } 
+                    })}
+                    placeholder="Address (leave empty to use wallet address)"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+              )}
+
+              {currentTool.params.includes('tokenAddress') && (
+                <div>
+                  <input
+                    type="text"
+                    value={config.parameters?.tokenAddress || ''}
+                    onChange={(e) => onUpdate({ 
+                      ...config, 
+                      parameters: { ...config.parameters, tokenAddress: e.target.value } 
+                    })}
+                    placeholder="Token Address *"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+              )}
+
+              {currentTool.params.includes('chainId') && (
+                <div>
+                  <input
+                    type="text"
+                    value={config.parameters?.chainId || ''}
+                    onChange={(e) => onUpdate({ 
+                      ...config, 
+                      parameters: { ...config.parameters, chainId: e.target.value } 
+                    })}
+                    placeholder="Chain ID (e.g., 1 for Ethereum)"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+              )}
+
+              {currentTool.params.includes('limit') && (
+                <div>
+                  <input
+                    type="number"
+                    value={config.parameters?.limit || 10}
+                    onChange={(e) => onUpdate({ 
+                      ...config, 
+                      parameters: { ...config.parameters, limit: parseInt(e.target.value) } 
+                    })}
+                    placeholder="Limit"
+                    min="1"
+                    max="100"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
       
-      <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
-        <p className="text-xs text-purple-800">
-          Use <span className="font-mono bg-purple-100 px-1 rounded">{'{variable}'}</span> syntax to reference previous node outputs
+      <div className="p-3 bg-cyan-50 border border-cyan-200 rounded-lg">
+        <p className="text-xs text-cyan-800">
+          🔌 MCP (Model Context Protocol) connects to external data sources
         </p>
       </div>
     </div>
@@ -970,6 +1118,8 @@ const NodeConfigPanel = ({
       return <ConditionConfig config={config} onUpdate={onUpdate} />;
     case 'ai':
       return <AIConfig config={config} onUpdate={onUpdate} />;
+    case 'mcp':
+      return <MCPConfig config={config} onUpdate={onUpdate} />;
     default:
       return (
         <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600 text-center">

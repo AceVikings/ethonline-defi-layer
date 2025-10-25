@@ -351,6 +351,11 @@ async function executeNode(node, nodeMap, edgeMap, executionSteps, pkpInfo, exec
         console.log(`│  ✓ AI executed:`, result);
         break;
         
+      case 'mcp':
+        result = await executeMCPNode(node, pkpInfo, previousOutputs);
+        console.log(`│  ✓ MCP executed:`, result);
+        break;
+        
       default:
         throw new Error(`Unknown node type: ${node.type}`);
     }
@@ -842,23 +847,188 @@ async function executeConditionNode(node, pkpInfo) {
   };
 }
 
-async function executeAINode(node, pkpInfo) {
-  // TODO: Implement actual AI agent call
+async function executeAINode(node, pkpInfo, previousOutputs = []) {
   const config = node.config || {};
   
-  if (!config.systemPrompt || !config.userPrompt) {
-    throw new Error('AI node missing required configuration (systemPrompt, userPrompt)');
+  if (!config.prompt) {
+    throw new Error('AI node missing required configuration (prompt)');
   }
   
-  console.log('   [AI] Executing AI:', config);
+  console.log('   [AI/ASI:One] Executing AI with prompt:', config.prompt);
+  console.log('   [AI/ASI:One] Previous outputs:', previousOutputs);
   
-  return {
-    success: true,
-    message: 'AI agent executed (stub)',
-    systemPrompt: config.systemPrompt,
-    userPrompt: config.userPrompt,
-    outputFormat: config.outputFormat || 'text',
-    response: 'AI response placeholder',
-  };
+  try {
+    // Prepare context from previous outputs
+    let contextInfo = '';
+    if (previousOutputs.length > 0) {
+      contextInfo = '\n\nContext from previous operations:\n';
+      previousOutputs.forEach((output, index) => {
+        contextInfo += `Operation ${index + 1}: ${JSON.stringify(output)}\n`;
+      });
+    }
+    
+    // Call ASI:One API
+    const response = await fetch('https://api.asi1.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer sk_c8d385c761d845689e9aa5dd2ab325024ec3a092ccc44103b6cacacae024b4b7'
+      },
+      body: JSON.stringify({
+        model: 'asi1-mini',
+        messages: [
+          {
+            role: 'system',
+            content: config.systemPrompt || 'You are a helpful DeFi assistant that analyzes blockchain data and provides insights.'
+          },
+          {
+            role: 'user',
+            content: config.prompt + contextInfo
+          }
+        ],
+        temperature: config.temperature || 0.7,
+        max_tokens: config.maxTokens || 500
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`ASI:One API error: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const aiResponse = data.choices?.[0]?.message?.content || 'No response from AI';
+    
+    console.log('   [AI/ASI:One] Response:', aiResponse);
+    
+    return {
+      success: true,
+      message: 'AI analysis completed',
+      prompt: config.prompt,
+      response: aiResponse,
+      model: 'asi1-mini',
+      output: {
+        response: aiResponse,
+        timestamp: new Date().toISOString()
+      }
+    };
+  } catch (error) {
+    console.error('   [AI/ASI:One] Error:', error);
+    throw new Error(`AI node execution failed: ${error.message}`);
+  }
 }
 
+async function executeMCPNode(node, pkpInfo, previousOutputs = []) {
+  const config = node.config || {};
+  
+  if (!config.mcpServer || !config.tool) {
+    throw new Error('MCP node missing required configuration (mcpServer, tool)');
+  }
+  
+  console.log('   [MCP] Executing MCP tool:', config.tool, 'on server:', config.mcpServer);
+  console.log('   [MCP] Tool parameters:', config.parameters);
+  console.log('   [MCP] Previous outputs:', previousOutputs);
+  
+  try {
+    // For Blockscout MCP integration
+    if (config.mcpServer === 'blockscout') {
+      return await executeBlockscoutMCP(config, pkpInfo, previousOutputs);
+    }
+    
+    // For future MCP servers, we can add more cases here
+    throw new Error(`MCP server '${config.mcpServer}' not yet implemented`);
+    
+  } catch (error) {
+    console.error('   [MCP] Error:', error);
+    throw new Error(`MCP node execution failed: ${error.message}`);
+  }
+}
+
+async function executeBlockscoutMCP(config, pkpInfo, previousOutputs) {
+  const { tool, parameters = {} } = config;
+  
+  console.log('   [Blockscout MCP] Executing tool:', tool);
+  
+  // Use Blockscout MCP tools
+  // Based on https://mcp.blockscout.com/ documentation
+  const blockscoutApiUrl = 'https://mcp.blockscout.com/api';
+  
+  try {
+    let result;
+    
+    switch (tool) {
+      case 'get_transactions':
+        // Get transaction history for an address
+        const address = parameters.address || pkpInfo.ethAddress;
+        const chainId = parameters.chainId || '1'; // Default to Ethereum mainnet
+        
+        result = await fetch(`${blockscoutApiUrl}/transactions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address,
+            chainId,
+            limit: parameters.limit || 10
+          })
+        });
+        break;
+        
+      case 'get_balance':
+        // Get token balances for an address
+        const balanceAddress = parameters.address || pkpInfo.ethAddress;
+        const balanceChainId = parameters.chainId || '1';
+        
+        result = await fetch(`${blockscoutApiUrl}/balance`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address: balanceAddress,
+            chainId: balanceChainId
+          })
+        });
+        break;
+        
+      case 'get_token_info':
+        // Get information about a token
+        if (!parameters.tokenAddress) {
+          throw new Error('tokenAddress parameter required for get_token_info');
+        }
+        
+        result = await fetch(`${blockscoutApiUrl}/token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address: parameters.tokenAddress,
+            chainId: parameters.chainId || '1'
+          })
+        });
+        break;
+        
+      default:
+        throw new Error(`Unknown Blockscout MCP tool: ${tool}`);
+    }
+    
+    if (!result.ok) {
+      throw new Error(`Blockscout API error: ${result.statusText}`);
+    }
+    
+    const data = await result.json();
+    
+    console.log('   [Blockscout MCP] Result:', data);
+    
+    return {
+      success: true,
+      message: `Blockscout MCP tool '${tool}' executed successfully`,
+      tool,
+      data,
+      output: {
+        tool,
+        result: data,
+        timestamp: new Date().toISOString()
+      }
+    };
+    
+  } catch (error) {
+    console.error('   [Blockscout MCP] Error:', error);
+    throw error;
+  }
+}

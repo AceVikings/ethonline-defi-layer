@@ -57,23 +57,32 @@ const EXPLORER_URLS: Record<string, string> = {
   polygonmumbai: "https://mumbai.polygonscan.com",
 };
 
-// Blockscout Chain ID mapping
+// Blockscout chain IDs mapping - all supported chains
 const BLOCKSCOUT_CHAIN_IDS: Record<number, string> = {
+  // Mainnets
+  1: "1", // Ethereum
+  137: "137", // Polygon
+  42161: "42161", // Arbitrum
+  10: "10", // Optimism
+  8453: "8453", // Base
+  56: "56", // BNB Chain
+  43114: "43114", // Avalanche
+  42220: "42220", // Celo
+  // Testnets
   11155111: "11155111", // Sepolia
   84532: "84532", // Base Sepolia
   421614: "421614", // Arbitrum Sepolia
   11155420: "11155420", // Optimism Sepolia
-  80002: "80002", // Polygon Amoy
-  1: "1", // Ethereum Mainnet
-  8453: "8453", // Base Mainnet
-  42161: "42161", // Arbitrum One
-  10: "10", // Optimism
-  137: "137", // Polygon
+  43113: "43113", // Avalanche Fuji
+  80001: "80001", // Polygon Mumbai
 };
 
 export default function AppPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  
+  // State for selected chain for transaction viewing
+  const [selectedTxChainId, setSelectedTxChainId] = useState<number | null>(null);
   const { openPopup } = useTransactionPopup();
   // const { chainId } = useAccount();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
@@ -88,8 +97,14 @@ export default function AppPage() {
 
   useEffect(() => {
     fetchData();
-    fetchBalances();
   }, []);
+
+  // Fetch balances when user is loaded
+  useEffect(() => {
+    if (user?.ethAddress) {
+      fetchBalances();
+    }
+  }, [user?.ethAddress]);
 
   const fetchBalances = async () => {
     if (!user?.ethAddress) return;
@@ -115,21 +130,33 @@ export default function AppPage() {
     }
   };
 
-  const handleViewTransactions = () => {
-    if (!chainId || !user?.ethAddress) {
+    const handleViewTransactions = () => {
+    // Validate user is logged in
+    if (!user?.ethAddress) {
       showToast.error("Please connect your wallet");
       return;
     }
 
-    const blockscoutChainId = BLOCKSCOUT_CHAIN_IDS[chainId];
-    if (blockscoutChainId) {
-      openPopup({
-        chainId: blockscoutChainId,
-        address: user.ethAddress,
-      });
-    } else {
-      showToast.error(`Chain ID ${chainId} not supported by Blockscout`);
+    // Validate chain is selected
+    if (!selectedTxChainId) {
+      showToast.error("Please select a chain to view transactions");
+      return;
     }
+
+    // Check if chain is supported by Blockscout
+    const blockscoutChainId = BLOCKSCOUT_CHAIN_IDS[selectedTxChainId];
+    if (!blockscoutChainId) {
+      showToast.error(
+        `Chain ID ${selectedTxChainId} not supported by Blockscout`
+      );
+      return;
+    }
+
+    // Open Blockscout transaction popup
+    openPopup({
+      chainId: blockscoutChainId,
+      address: user.ethAddress,
+    });
   };
 
   const openExplorer = (chainKey: string) => {
@@ -413,10 +440,37 @@ export default function AppPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
+                  {/* Chain selector for transactions */}
+                  <select
+                    value={selectedTxChainId || ""}
+                    onChange={(e) =>
+                      setSelectedTxChainId(
+                        e.target.value ? Number(e.target.value) : null
+                      )
+                    }
+                    className="px-3 py-1.5 bg-white/10 backdrop-blur-sm text-white text-xs rounded-lg border border-white/20 hover:bg-white/20 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/30"
+                  >
+                    <option value="" className="bg-slate-800 text-white">
+                      Select Chain
+                    </option>
+                    {balances
+                      .filter((b) => BLOCKSCOUT_CHAIN_IDS[b.chainId]) // Only show chains supported by Blockscout
+                      .map((balance) => (
+                        <option
+                          key={balance.chainId}
+                          value={balance.chainId}
+                          className="bg-slate-800 text-white"
+                        >
+                          {balance.chainName}
+                          {balance.isTestnet ? " (Testnet)" : ""}
+                        </option>
+                      ))}
+                  </select>
+
                   <button
                     onClick={handleViewTransactions}
-                    disabled={!chainId || !BLOCKSCOUT_CHAIN_IDS[chainId]}
+                    disabled={!selectedTxChainId}
                     className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-lg transition text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <svg
@@ -429,11 +483,12 @@ export default function AppPage() {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                       />
                     </svg>
                     Transactions
                   </button>
+
                   <button
                     onClick={copyAddress}
                     className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-lg transition text-xs font-semibold"
