@@ -1,0 +1,165 @@
+name: Deploy to GCP VM
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'backend-python/**'
+      - '.github/workflows/deploy-gcp.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Create deployment script
+        run: |
+          cat > deploy.sh << 'EOF'
+          #!/bin/bash
+          set -e
+
+          echo "🚀 Starting deployment..."
+
+          # Update system
+          sudo apt-get update
+
+          # Install Node.js if not present
+          if ! command -v node &> /dev/null; then
+            echo "📦 Installing Node.js..."
+            curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+            sudo apt-get install -y nodejs
+          fi
+
+          # Install Python if not present
+          if ! command -v python3 &> /dev/null; then
+            echo "🐍 Installing Python..."
+            sudo apt-get install -y python3 python3-pip python3-venv
+          fi
+
+          # Install PM2 globally if not present
+          if ! command -v pm2 &> /dev/null; then
+            echo "📦 Installing PM2..."
+            sudo npm install -g pm2
+          fi
+
+          # Create app directory
+          sudo mkdir -p /opt/deflow
+          sudo chown -R $USER:$USER /opt/deflow
+          cd /opt/deflow
+
+          # Clone/pull latest code (if repo is private, use deploy keys)
+          if [ -d ".git" ]; then
+            echo "📥 Pulling latest changes..."
+            git pull origin main
+          else
+            echo "📥 Cloning repository..."
+            # For public repo
+            git clone https://github.com/AceVikings/ethonline-defi-layer.git .
+          fi
+
+          # Deploy Node.js Backend
+          echo "🟢 Deploying Node.js backend..."
+          cd /opt/deflow/backend
+          
+          # Create .env file from secrets
+          cat > .env << 'ENVEOF'
+          PORT=3001
+          NODE_ENV=production
+          MONGODB_URI=${{ secrets.MONGODB_URI }}
+          VINCENT_APP_ID=${{ secrets.VINCENT_APP_ID }}
+          VINCENT_ALLOWED_AUDIENCE=${{ secrets.VINCENT_ALLOWED_AUDIENCE }}
+          VINCENT_DELEGATEE_PRIVATE_KEY=${{ secrets.VINCENT_DELEGATEE_PRIVATE_KEY }}
+          LIT_NETWORK=${{ secrets.LIT_NETWORK }}
+          RPC_ETHEREUM=${{ secrets.RPC_ETHEREUM }}
+          RPC_SEPOLIA=${{ secrets.RPC_SEPOLIA }}
+          RPC_POLYGON=${{ secrets.RPC_POLYGON }}
+          RPC_ARBITRUM=${{ secrets.RPC_ARBITRUM }}
+          RPC_OPTIMISM=${{ secrets.RPC_OPTIMISM }}
+          RPC_BASE=${{ secrets.RPC_BASE }}
+          RPC_BNB=${{ secrets.RPC_BNB }}
+          RPC_AVALANCHE=${{ secrets.RPC_AVALANCHE }}
+          RPC_CELO=${{ secrets.RPC_CELO }}
+          RPC_BASESEPOLIA=${{ secrets.RPC_BASESEPOLIA }}
+          RPC_ARBITRUMSEPOLIA=${{ secrets.RPC_ARBITRUMSEPOLIA }}
+          RPC_OPTIMISMSEPOLIA=${{ secrets.RPC_OPTIMISMSEPOLIA }}
+          RPC_AVALANCHEFUJI=${{ secrets.RPC_AVALANCHEFUJI }}
+          RPC_POLYGONMUMBAI=${{ secrets.RPC_POLYGONMUMBAI }}
+          RPC_BNBTESTNET=${{ secrets.RPC_BNBTESTNET }}
+          ENVEOF
+
+          npm install --production
+          pm2 delete deflow-backend || true
+          pm2 start src/index.js --name deflow-backend
+          pm2 save
+
+          # Deploy Python Backend
+          echo "🐍 Deploying Python backend..."
+          cd /opt/deflow/backend-python
+          
+          # Create .env file from secrets
+          cat > .env << 'ENVEOF'
+          ASI_ONE_API_KEY=${{ secrets.ASI_ONE_API_KEY }}
+          AGENTVERSE_API_TOKEN=${{ secrets.AGENTVERSE_API_TOKEN }}
+          UAGENT_SEED=${{ secrets.UAGENT_SEED }}
+          UAGENT_MAILBOX_KEY=${{ secrets.UAGENT_MAILBOX_KEY }}
+          UAGENT_PORT=8000
+          FLASK_PORT=8080
+          FLASK_DEBUG=False
+          NODEJS_BACKEND_URL=http://localhost:3001
+          ENVEOF
+
+          # Create virtual environment if it doesn't exist
+          if [ ! -d "venv" ]; then
+            python3 -m venv venv
+          fi
+          
+          source venv/bin/activate
+          pip install -r requirements.txt
+          deactivate
+
+          pm2 delete deflow-python || true
+          pm2 start server.py --name deflow-python --interpreter /opt/deflow/backend-python/venv/bin/python
+          pm2 save
+
+          # Setup PM2 startup
+          sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u $USER --hp /home/$USER
+          
+          echo "✅ Deployment completed successfully!"
+          pm2 list
+          EOF
+
+          chmod +x deploy.sh
+
+      - name: Copy files to VM
+        run: |
+          gcloud compute scp deploy.sh ${{ secrets.GCP_VM_NAME }}:~/deploy.sh --zone=${{ secrets.GCP_ZONE }}
+
+      - name: Execute deployment
+        run: |
+          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} --command="bash ~/deploy.sh"
+
+      - name: Verify deployment
+        run: |
+          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} --command="pm2 list && curl -f http://localhost:3001/health || true && curl -f http://localhost:8080/health || true"
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ Deployment successful!"
+          else
+            echo "❌ Deployment failed!"
+          fi
