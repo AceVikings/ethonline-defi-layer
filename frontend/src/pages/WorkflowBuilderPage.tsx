@@ -185,6 +185,7 @@ const TriggerConfig = ({
   const [showLogs, setShowLogs] = useState(false);
   const triggerType = config.triggerType || "manual";
   const shownTxHashes = useRef<Set<string>>(new Set());
+  const hasShownCompletion = useRef(false);
 
   // Poll for execution updates
   useEffect(() => {
@@ -204,7 +205,11 @@ const TriggerConfig = ({
           clearInterval(pollInterval);
 
           if (response.execution.status === "completed") {
-            showToast.success("Workflow execution completed!");
+            // Only show completion toast once
+            if (!hasShownCompletion.current) {
+              hasShownCompletion.current = true;
+              showToast.success("Workflow execution completed!");
+            }
             
             // Extract and show transaction notifications
             if (response.execution.steps && response.execution.steps.length > 0) {
@@ -255,6 +260,7 @@ const TriggerConfig = ({
     setShowLogs(true);
     setExecutionData(null);
     shownTxHashes.current.clear(); // Reset shown tx hashes for new execution
+    hasShownCompletion.current = false; // Reset completion flag
 
     try {
       const response = await apiClient.executeWorkflow(workflowId);
