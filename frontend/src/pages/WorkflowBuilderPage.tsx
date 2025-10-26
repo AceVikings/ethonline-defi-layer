@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ReactFlow,
@@ -184,6 +184,7 @@ const TriggerConfig = ({
   const [executionData, setExecutionData] = useState<any>(null);
   const [showLogs, setShowLogs] = useState(false);
   const triggerType = config.triggerType || "manual";
+  const shownTxHashes = useRef<Set<string>>(new Set());
 
   // Poll for execution updates
   useEffect(() => {
@@ -212,7 +213,8 @@ const TriggerConfig = ({
                 const txHash = step.output?.txHash || step.output?.swapTxHash;
                 const chainId = step.output?.chainId?.toString();
                 
-                if (txHash && chainId) {
+                if (txHash && chainId && !shownTxHashes.current.has(txHash)) {
+                  shownTxHashes.current.add(txHash);
                   openTxToast(chainId, txHash).catch((err) => {
                     console.error('Failed to show transaction notification:', err);
                   });
@@ -221,7 +223,8 @@ const TriggerConfig = ({
                 // Also check for transactions array (for nodes with multiple txs)
                 if (step.output?.transactions && Array.isArray(step.output.transactions)) {
                   step.output.transactions.forEach((tx: any) => {
-                    if (tx.hash && tx.chainId) {
+                    if (tx.hash && tx.chainId && !shownTxHashes.current.has(tx.hash)) {
+                      shownTxHashes.current.add(tx.hash);
                       openTxToast(tx.chainId.toString(), tx.hash).catch((err) => {
                         console.error('Failed to show transaction notification:', err);
                       });
@@ -251,6 +254,7 @@ const TriggerConfig = ({
     setTriggering(true);
     setShowLogs(true);
     setExecutionData(null);
+    shownTxHashes.current.clear(); // Reset shown tx hashes for new execution
 
     try {
       const response = await apiClient.executeWorkflow(workflowId);
