@@ -1175,9 +1175,13 @@ async function executeAINode(node, pkpInfo, previousOutputs = [], nodeMap = new 
   }
   
   console.log('   [AI/ASI:One] Executing AI with prompt:', config.prompt);
+  console.log('   [AI/ASI:One] Agent Address:', config.agentAddress || 'None');
   console.log('   [AI/ASI:One] Previous outputs:', previousOutputs);
   
   try {
+    // Check if agent address is provided for direct agent connection
+    const hasAgentAddress = config.agentAddress && config.agentAddress.trim().length > 0;
+    
     // Detect MCP connections (incoming edges with targetHandle = 'mcp-input')
     const incomingEdges = Array.from(edgeMap.values()).flat().filter(edge => edge.to === node.id);
     const mcpEdges = incomingEdges.filter(edge => edge.targetHandle === 'mcp-input');
@@ -1222,15 +1226,19 @@ async function executeAINode(node, pkpInfo, previousOutputs = [], nodeMap = new 
       });
     }
     
-    // Build system prompt based on available tools
+    // Build system prompt based on available tools and agent connections
     let systemPrompt = config.systemPrompt || 'You are a helpful DeFi assistant that analyzes blockchain data and provides insights.';
+    
+    if (hasAgentAddress) {
+      systemPrompt += `\n\nYou are connected to an Agentverse agent at address: ${config.agentAddress}. You can query this agent for real-time blockchain data, DeFi operations, or other specialized capabilities it provides. When the user asks for blockchain data or information that this agent can provide, explain what data you can access from it.`;
+    }
     
     if (mcpTools.length > 0) {
       // List available tool names
       const toolNames = mcpTools.map(t => t.function?.name || 'unknown').join(', ');
       systemPrompt += `\n\nYou have access to the following MCP tools that you can call when needed: ${toolNames}. Use these tools to answer questions about blockchain data, transactions, balances, and token information. Always use these tools when asked about specific blockchain data rather than making up information.`;
-    } else {
-      systemPrompt += '\n\nYou do NOT have access to any MCP tools or external data sources in this workflow. If asked about specific blockchain data, transactions, or balances, inform the user that you need an MCP node (like Blockscout) to be connected to access that information. Do not make up or hallucinate tool names or capabilities.';
+    } else if (!hasAgentAddress) {
+      systemPrompt += '\n\nYou do NOT have access to any MCP tools or external data sources in this workflow. If asked about specific blockchain data, transactions, or balances, inform the user that you need an MCP node (like Blockscout) or an Agentverse agent connection to access that information. Do not make up or hallucinate tool names or capabilities.';
     }
     
     // Build request body
