@@ -1182,41 +1182,6 @@ async function executeAINode(node, pkpInfo, previousOutputs = [], nodeMap = new 
     // Check if agent address is provided for direct agent connection
     const hasAgentAddress = config.agentAddress && config.agentAddress.trim().length > 0;
     
-    // Detect MCP connections (incoming edges with targetHandle = 'mcp-input')
-    const incomingEdges = Array.from(edgeMap.values()).flat().filter(edge => edge.to === node.id);
-    const mcpEdges = incomingEdges.filter(edge => edge.targetHandle === 'mcp-input');
-    const mcpNodes = mcpEdges.map(edge => nodeMap.get(edge.from)).filter(n => n && n.type === 'mcp');
-    
-    console.log(`   [AI/ASI:One] Incoming edges:`, JSON.stringify(incomingEdges, null, 2));
-    console.log(`   [AI/ASI:One] MCP edges (targetHandle='mcp-input'):`, JSON.stringify(mcpEdges, null, 2));
-    console.log(`   [AI/ASI:One] Found ${mcpNodes.length} MCP connections`);
-    
-    // Prepare MCP tools if any MCP nodes are connected
-    let mcpTools = [];
-    let mcpServers = [];
-    
-    if (mcpNodes.length > 0) {
-      // Call Python backend to get MCP tools
-      const mcpServerTypes = mcpNodes.map(n => n.config?.mcpServer).filter(Boolean);
-      console.log('   [AI/ASI:One] MCP servers:', mcpServerTypes);
-      
-      try {
-        const mcpResponse = await fetch(`http://localhost:${process.env.FLASK_PORT || 8080}/api/mcp/tools`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ servers: mcpServerTypes })
-        });
-        
-        if (mcpResponse.ok) {
-          const mcpData = await mcpResponse.json();
-          mcpTools = mcpData.tools || [];
-          console.log(`   [AI/ASI:One] Loaded ${mcpTools.length} MCP tools`);
-        }
-      } catch (err) {
-        console.warn('   [AI/ASI:One] Could not load MCP tools:', err.message);
-      }
-    }
-    
     // Prepare context from previous outputs
     let contextInfo = '';
     if (previousOutputs.length > 0) {
@@ -1226,19 +1191,11 @@ async function executeAINode(node, pkpInfo, previousOutputs = [], nodeMap = new 
       });
     }
     
-    // Build system prompt based on available tools and agent connections
+    // Build system prompt based on agent connections
     let systemPrompt = config.systemPrompt || 'You are a helpful DeFi assistant that analyzes blockchain data and provides insights.';
     
     if (hasAgentAddress) {
-      systemPrompt += `\n\nYou are connected to an Agentverse agent at address: ${config.agentAddress}. You can query this agent for real-time blockchain data, DeFi operations, or other specialized capabilities it provides. When the user asks for blockchain data or information that this agent can provide, explain what data you can access from it.`;
-    }
-    
-    if (mcpTools.length > 0) {
-      // List available tool names
-      const toolNames = mcpTools.map(t => t.function?.name || 'unknown').join(', ');
-      systemPrompt += `\n\nYou have access to the following MCP tools that you can call when needed: ${toolNames}. Use these tools to answer questions about blockchain data, transactions, balances, and token information. Always use these tools when asked about specific blockchain data rather than making up information.`;
-    } else if (!hasAgentAddress) {
-      systemPrompt += '\n\nYou do NOT have access to any MCP tools or external data sources in this workflow. If asked about specific blockchain data, transactions, or balances, inform the user that you need an MCP node (like Blockscout) or an Agentverse agent connection to access that information. Do not make up or hallucinate tool names or capabilities.';
+      systemPrompt += `\n\nYou are connected to an Agentverse agent at address: ${config.agentAddress}. This agent can handle tool calls and provide real-time blockchain data, DeFi operations, or other specialized capabilities. When the user asks for blockchain data or operations, the connected agent will handle the actual execution.`;
     }
     
     // Build request body
@@ -1258,13 +1215,6 @@ async function executeAINode(node, pkpInfo, previousOutputs = [], nodeMap = new 
       max_tokens: config.maxTokens || 500
     };
     
-    // Add MCP tools if available
-    if (mcpTools.length > 0) {
-      requestBody.tools = mcpTools;
-      requestBody.tool_choice = 'auto';
-      console.log('   [AI/ASI:One] Tool calling enabled with', mcpTools.length, 'tools');
-    }
-    
     // Call ASI:One API
     const response = await fetch('https://api.asi1.ai/v1/chat/completions', {
       method: 'POST',
@@ -1280,135 +1230,20 @@ async function executeAINode(node, pkpInfo, previousOutputs = [], nodeMap = new 
     }
     
     const data = await response.json();
-    const message = data.choices?.[0]?.message;
-    const aiResponse = message?.content || '';
-    const toolCalls = message?.tool_calls || [];
+    const aiResponse = data.choices?.[0]?.message?.content || '';
     
-    console.log('   [AI/ASI:One] Initial response:', aiResponse);
-    console.log('   [AI/ASI:One] Tool calls requested:', toolCalls.length);
-    
-    // Execute any tool calls
-    let finalResponse = aiResponse;
-    if (toolCalls.length > 0 && mcpNodes.length > 0) {
-      const toolResults = [];
-      
-      for (const toolCall of toolCalls) {
-        const toolName = toolCall.function.name;
-        const toolArgs = JSON.parse(toolCall.function.arguments || '{}');
-        
-        console.log(`   [AI/ASI:One] Executing tool: ${toolName}`, toolArgs);
-        
-        try {
-          // Call Python backend to execute MCP tool
-          const toolResponse = await fetch(`http://localhost:${process.env.FLASK_PORT || 8080}/api/mcp/execute`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              server: mcpNodes[0].config?.mcpServer || 'blockscout',
-              tool: toolName,
-              arguments: toolArgs
-            })
-          });
-          
-          if (toolResponse.ok) {
-            const toolData = await toolResponse.json();
-            
-            // Extract transaction hashes from the result for notifications
-            const txHashRegex = /0x[a-fA-F0-9]{64}/g;
-            const txHashes = toolData.result ? toolData.result.match(txHashRegex) : null;
-            
-            toolResults.push({
-              tool: toolName,
-              result: toolData.result,
-              txHashes: txHashes || [],
-              chainId: toolArgs.chainId || '8453' // Default to Base
-            });
-            console.log(`   [AI/ASI:One] Tool result:`, toolData.result);
-            if (txHashes && txHashes.length > 0) {
-              console.log(`   [AI/ASI:One] Found ${txHashes.length} transaction(s):`, txHashes);
-            }
-          }
-        } catch (err) {
-          console.error(`   [AI/ASI:One] Tool execution error:`, err.message);
-          toolResults.push({
-            tool: toolName,
-            error: err.message
-          });
-        }
-      }
-      
-      // If we have tool results, send them back to AI for final response
-      if (toolResults.length > 0) {
-        const toolResultsText = toolResults.map(tr => 
-          `${tr.tool}: ${tr.result || tr.error}`
-        ).join('\n\n');
-        
-        const finalRequest = {
-          model: 'asi1-mini',
-          messages: [
-            {
-              role: 'system',
-              content: config.systemPrompt || 'You are a helpful DeFi assistant that analyzes blockchain data and provides insights.'
-            },
-            {
-              role: 'user',
-              content: config.prompt + contextInfo
-            },
-            {
-              role: 'assistant',
-              content: aiResponse
-            },
-            {
-              role: 'user',
-              content: `Here are the results from the tools you requested:\n\n${toolResultsText}\n\nPlease provide your final analysis.`
-            }
-          ],
-          temperature: config.temperature || 0.7,
-          max_tokens: config.maxTokens || 500
-        };
-        
-        const finalResponseData = await fetch('https://api.asi1.ai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer sk_c8d385c761d845689e9aa5dd2ab325024ec3a092ccc44103b6cacacae024b4b7'
-          },
-          body: JSON.stringify(finalRequest)
-        });
-        
-        if (finalResponseData.ok) {
-          const finalData = await finalResponseData.json();
-          finalResponse = finalData.choices?.[0]?.message?.content || aiResponse;
-          console.log('   [AI/ASI:One] Final response with tool results:', finalResponse);
-        }
-      }
-    }
-    
-    // Collect all transaction hashes and chain IDs from tool results
-    const allTxHashes = [];
-    toolResults.forEach(tr => {
-      if (tr.txHashes && tr.txHashes.length > 0) {
-        tr.txHashes.forEach(hash => {
-          allTxHashes.push({
-            hash,
-            chainId: tr.chainId || '8453'
-          });
-        });
-      }
-    });
+    console.log('   [AI/ASI:One] Response:', aiResponse);
     
     return {
       success: true,
       message: 'AI analysis completed',
       prompt: config.prompt,
-      response: finalResponse,
+      response: aiResponse,
       model: 'asi1-mini',
-      mcpToolsUsed: toolCalls.length,
-      transactions: allTxHashes, // Include transaction info for frontend notifications
+      agentAddress: config.agentAddress || null,
       output: {
-        response: finalResponse,
-        toolCallsMade: toolCalls.length,
-        transactions: allTxHashes,
+        response: aiResponse,
+        agentAddress: config.agentAddress || null,
         timestamp: new Date().toISOString()
       }
     };

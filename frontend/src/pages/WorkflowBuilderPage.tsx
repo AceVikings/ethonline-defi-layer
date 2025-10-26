@@ -70,22 +70,6 @@ const CustomNode = ({ data }: any) => {
         />
       )}
 
-      {/* Special MCP input handle for AI nodes (left side) */}
-      {isAI && (
-        <>
-          <Handle
-            type="target"
-            position={Position.Left}
-            className="w-3 h-3 !bg-cyan-500"
-            id="mcp-input"
-            style={{ left: "-6px", top: "30%" }}
-          />
-          <div className="absolute left-2 top-[30%] -translate-y-1/2 text-[9px] font-bold text-cyan-600 bg-white px-1 rounded pointer-events-none shadow-sm border border-cyan-200">
-            MCP
-          </div>
-        </>
-      )}
-
       <div
         className={`bg-gradient-to-br ${nodeType.color} px-4 py-2 rounded-t-lg text-white`}
       >
@@ -1530,20 +1514,7 @@ export default function WorkflowBuilderPage() {
 
   const onConnect = useCallback(
     (params: Connection) => {
-      // Validate MCP nodes can only connect to AI nodes' MCP input
       const sourceNode = nodes.find((n) => n.id === params.source);
-      const targetNode = nodes.find((n) => n.id === params.target);
-
-      if (sourceNode?.data.type === "mcp") {
-        if (targetNode?.data.type !== "ai") {
-          showToast.warning("MCP nodes can only connect to AI nodes");
-          return;
-        }
-        if (params.targetHandle !== "mcp-input") {
-          showToast.warning("MCP nodes must connect to the AI node's MCP input (cyan handle on the left)");
-          return;
-        }
-      }
 
       // Determine edge style based on connection type
       const edgeStyle = sourceNode?.data.type === "mcp"
