@@ -331,12 +331,8 @@ def get_default_config(base_type: str, full_type: str):
         "ai": {
             "systemPrompt": "You are a DeFi assistant.",
             "userPrompt": "",
-            "outputFormat": "text"
-        },
-        "mcp": {
-            "mcpServer": "blockscout",
-            "toolName": "",
-            "parameters": "{}"
+            "outputFormat": "text",
+            "agentAddress": ""
         }
     }
     
