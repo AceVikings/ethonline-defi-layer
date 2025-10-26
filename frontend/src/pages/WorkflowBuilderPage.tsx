@@ -1293,11 +1293,6 @@ const AIConfig = ({
       description: "Real-time blockchain data (balances, transactions, NFTs)"
     },
     {
-      name: "DeFi Workflow Builder",
-      address: "agent1qv5658stegsd5azsaluh5eel6mp8meafkw3egsren6sc3m2nnujtgwtgdwx",
-      description: "AI workflow generation and DeFi strategy advice"
-    },
-    {
       name: "Custom",
       address: "custom",
       description: "Enter custom agent address"
@@ -1305,7 +1300,7 @@ const AIConfig = ({
   ];
 
   const selectedPreset = PRESET_AGENTS.find(a => a.address === config.agentAddress) 
-    || (config.agentAddress ? PRESET_AGENTS[3] : PRESET_AGENTS[0]);
+    || (config.agentAddress ? PRESET_AGENTS[2] : PRESET_AGENTS[0]);
   const isCustom = selectedPreset.address === "custom";
 
   return (
