@@ -7,6 +7,7 @@ import { LitNodeClient } from '@lit-protocol/lit-node-client';
 import { getVincentAbilityClient } from '@lit-protocol/vincent-app-sdk/abilityClient';
 import { getSignedUniswapQuote, bundledVincentAbility as uniswapBundledAbility } from '@lit-protocol/vincent-ability-uniswap-swap';
 import { bundledVincentAbility as erc20BundledAbility } from '@lit-protocol/vincent-ability-erc20-approval';
+import { bundledVincentAbility as aaveBundledAbility } from '@lit-protocol/vincent-ability-aave';
 
 // Load environment variables
 const __filename = fileURLToPath(import.meta.url);
@@ -104,6 +105,18 @@ export function getERC20ApprovalAbilityClient() {
   
   return getVincentAbilityClient({
     bundledVincentAbility: erc20BundledAbility,
+    ethersSigner: signer,
+  });
+}
+
+/**
+ * Get Aave Ability Client
+ */
+export function getAaveAbilityClient() {
+  const signer = getDelegateeSigner();
+  
+  return getVincentAbilityClient({
+    bundledVincentAbility: aaveBundledAbility,
     ethersSigner: signer,
   });
 }

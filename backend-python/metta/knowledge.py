@@ -45,11 +45,12 @@ def initialize_defi_knowledge(metta: MeTTa):
     # Node type definitions: (node-type <type> <label> <description> <color>)
     node_types = [
         ("trigger", "Trigger", "Start the workflow execution", "from-yellow-400 to-orange-500"),
-        ("swap", "Token Swap", "Exchange tokens on DEX", "from-blue-400 to-blue-600"),
-        ("aave", "Aave Protocol", "Supply or borrow assets", "from-purple-400 to-purple-600"),
-        ("transfer", "Token Transfer", "Send tokens to address", "from-green-400 to-green-600"),
-        ("condition", "Conditional", "If/else branching logic", "from-pink-400 to-pink-600"),
-        ("ai", "AI Agent", "AI-powered decision making", "from-indigo-400 to-indigo-600"),
+        ("swap", "Token Swap", "Exchange tokens on DEX using Uniswap or 1inch", "from-blue-400 to-blue-600"),
+        ("aave", "Aave Protocol", "Supply, withdraw, borrow, or repay on Aave V3", "from-purple-400 to-purple-600"),
+        ("transfer", "Token Transfer", "Send ERC20 or native tokens to address", "from-green-400 to-green-600"),
+        ("condition", "Conditional", "Compare values with true/false branches", "from-pink-400 to-pink-600"),
+        ("ai", "AI Agent", "AI-powered analysis with ASI:One and MCP tools", "from-indigo-400 to-indigo-600"),
+        ("mcp", "MCP Server", "Connect external tools via Model Context Protocol", "from-cyan-400 to-cyan-600"),
     ]
     
     for node_type, label, description, color in node_types:
@@ -75,27 +76,68 @@ def initialize_defi_knowledge(metta: MeTTa):
     metta.space().add_atom(E(S("node-config"), S("swap"), S("tokenOut"), ValueAtom("USDC")))
     metta.space().add_atom(E(S("node-config"), S("swap"), S("amount"), ValueAtom("")))
     metta.space().add_atom(E(S("node-config"), S("swap"), S("slippage"), ValueAtom("0.5")))
+    metta.space().add_atom(E(S("node-config"), S("swap"), S("chain"), ValueAtom("base")))
     
-    # Aave node config
+    # Aave node config - All 4 operations: supply, withdraw, borrow, repay
     metta.space().add_atom(E(S("node-config"), S("aave"), S("action"), ValueAtom("supply")))
     metta.space().add_atom(E(S("node-config"), S("aave"), S("asset"), ValueAtom("USDC")))
     metta.space().add_atom(E(S("node-config"), S("aave"), S("amount"), ValueAtom("")))
     metta.space().add_atom(E(S("node-config"), S("aave"), S("chain"), ValueAtom("base")))
+    metta.space().add_atom(E(S("node-config"), S("aave"), S("interestRateMode"), ValueAtom("2")))  # 1=Stable, 2=Variable
+    metta.space().add_atom(E(S("node-config"), S("aave"), S("useAsCollateral"), ValueAtom("true")))
     
-    # Transfer node config
+    # Aave actions
+    metta.space().add_atom(E(S("aave-action"), S("supply"), ValueAtom("Deposit assets to earn interest")))
+    metta.space().add_atom(E(S("aave-action"), S("withdraw"), ValueAtom("Withdraw supplied assets")))
+    metta.space().add_atom(E(S("aave-action"), S("borrow"), ValueAtom("Borrow against collateral")))
+    metta.space().add_atom(E(S("aave-action"), S("repay"), ValueAtom("Repay borrowed debt")))
+    
+    # Transfer node config - Supports both ERC20 and native tokens
     metta.space().add_atom(E(S("node-config"), S("transfer"), S("token"), ValueAtom("USDC")))
     metta.space().add_atom(E(S("node-config"), S("transfer"), S("recipient"), ValueAtom("")))
     metta.space().add_atom(E(S("node-config"), S("transfer"), S("amount"), ValueAtom("")))
+    metta.space().add_atom(E(S("node-config"), S("transfer"), S("chain"), ValueAtom("base")))
     
-    # Condition node config
+    # Condition node config - Supports value inputs from side nodes
     metta.space().add_atom(E(S("node-config"), S("condition"), S("leftValue"), ValueAtom("")))
     metta.space().add_atom(E(S("node-config"), S("condition"), S("operator"), ValueAtom(">")))
     metta.space().add_atom(E(S("node-config"), S("condition"), S("rightValue"), ValueAtom("")))
     
-    # AI node config
-    metta.space().add_atom(E(S("node-config"), S("ai"), S("systemPrompt"), ValueAtom("You are a DeFi assistant.")))
-    metta.space().add_atom(E(S("node-config"), S("ai"), S("userPrompt"), ValueAtom("")))
-    metta.space().add_atom(E(S("node-config"), S("ai"), S("outputFormat"), ValueAtom("text")))
+    # Condition operators
+    metta.space().add_atom(E(S("condition-operator"), S("=="), ValueAtom("Equal to")))
+    metta.space().add_atom(E(S("condition-operator"), S("!="), ValueAtom("Not equal to")))
+    metta.space().add_atom(E(S("condition-operator"), S(">"), ValueAtom("Greater than")))
+    metta.space().add_atom(E(S("condition-operator"), S(">="), ValueAtom("Greater than or equal")))
+    metta.space().add_atom(E(S("condition-operator"), S("<"), ValueAtom("Less than")))
+    metta.space().add_atom(E(S("condition-operator"), S("<="), ValueAtom("Less than or equal")))
+    
+    # Condition handles - Value inputs and true/false outputs
+    metta.space().add_atom(E(S("condition-input"), S("value1"), ValueAtom("Left side value from node output")))
+    metta.space().add_atom(E(S("condition-input"), S("value2"), ValueAtom("Right side value from node output")))
+    metta.space().add_atom(E(S("condition-output"), S("true"), ValueAtom("Condition met branch")))
+    metta.space().add_atom(E(S("condition-output"), S("false"), ValueAtom("Condition not met branch")))
+    
+    # AI node config - Integrates with ASI:One and MCP
+    metta.space().add_atom(E(S("node-config"), S("ai"), S("prompt"), ValueAtom("")))
+    metta.space().add_atom(E(S("node-config"), S("ai"), S("model"), ValueAtom("gpt-4")))
+    metta.space().add_atom(E(S("node-config"), S("ai"), S("temperature"), ValueAtom("0.7")))
+    metta.space().add_atom(E(S("node-config"), S("ai"), S("maxTokens"), ValueAtom("1000")))
+    
+    # AI handles - MCP tool connection
+    metta.space().add_atom(E(S("ai-input"), S("mcp-input"), ValueAtom("Connect MCP tools for AI to use")))
+    
+    # MCP node config - External tool servers
+    metta.space().add_atom(E(S("node-config"), S("mcp"), S("mcpServer"), ValueAtom("blockscout")))
+    metta.space().add_atom(E(S("node-config"), S("mcp"), S("toolName"), ValueAtom("")))
+    metta.space().add_atom(E(S("node-config"), S("mcp"), S("parameters"), ValueAtom("{}")))
+    
+    # Available MCP servers
+    metta.space().add_atom(E(S("mcp-server"), S("blockscout"), ValueAtom("Blockchain explorer and analytics")))
+    metta.space().add_atom(E(S("mcp-server"), S("defi-analytics"), ValueAtom("DeFi protocol analytics")))
+    metta.space().add_atom(E(S("mcp-server"), S("price-oracle"), ValueAtom("Token price data")))
+    
+    # MCP output handle
+    metta.space().add_atom(E(S("mcp-output"), S("mcp-output"), ValueAtom("Connect to AI node for tool access")))
     
     # ============================================
     # 3. DEFINE TOKENS
@@ -128,25 +170,29 @@ def initialize_defi_knowledge(metta: MeTTa):
     # ============================================
     print("[MeTTa] Adding blockchain networks...")
     
-    # Chains: (chain <name> <chain-id> <testnet?>)
+    # Chains: (chain <name> <chain-id> <testnet?> <aave-support?>)
     chains = [
-        ("ethereum", "1", "false"),
-        ("base", "8453", "false"),
-        ("optimism", "10", "false"),
-        ("arbitrum", "42161", "false"),
-        ("polygon", "137", "false"),
-        ("avalanche", "43114", "false"),
-        ("bsc", "56", "false"),
-        ("sepolia", "11155111", "true"),
-        ("base-sepolia", "84532", "true"),
+        ("ethereum", "1", "false", "true"),
+        ("base", "8453", "false", "true"),
+        ("optimism", "10", "false", "true"),
+        ("arbitrum", "42161", "false", "true"),
+        ("polygon", "137", "false", "true"),
+        ("avalanche", "43114", "false", "true"),
+        ("bsc", "56", "false", "false"),
+        ("sepolia", "11155111", "true", "true"),
+        ("basesepolia", "84532", "true", "true"),
+        ("arbitrumsepolia", "421614", "true", "true"),
+        ("optimismsepolia", "11155420", "true", "true"),
+        ("avalanchefuji", "43113", "true", "true"),
     ]
     
-    for name, chain_id, is_testnet in chains:
+    for name, chain_id, is_testnet, has_aave in chains:
         metta.space().add_atom(E(
             S("chain"),
             S(name),
             ValueAtom(chain_id),
-            ValueAtom(is_testnet)
+            ValueAtom(is_testnet),
+            ValueAtom(has_aave)
         ))
     
     # ============================================
@@ -156,12 +202,18 @@ def initialize_defi_knowledge(metta: MeTTa):
     
     # Strategies: (strategy <name> <description> <node-sequence>)
     strategies = [
-        ("maximize_yield_usdc", "Maximize yield on USDC", "trigger -> swap -> aave"),
-        ("dollar_cost_average", "DCA into ETH from USDC", "trigger -> swap"),
-        ("arbitrage_dex", "Arbitrage between DEXs", "trigger -> swap -> swap"),
-        ("lending_strategy", "Supply assets to lending protocol", "trigger -> aave"),
+        ("maximize_yield_usdc", "Maximize yield on USDC by supplying to Aave", "trigger -> aave(supply)"),
+        ("swap_and_lend", "Swap ETH to USDC and supply to Aave", "trigger -> swap(ETH->USDC) -> aave(supply)"),
+        ("dollar_cost_average", "DCA into ETH from USDC", "trigger -> swap(USDC->ETH)"),
+        ("conditional_swap", "Swap only if condition is met", "trigger -> condition -> swap"),
+        ("lending_strategy", "Supply assets to lending protocol", "trigger -> aave(supply)"),
         ("swap_and_transfer", "Swap tokens and send to address", "trigger -> swap -> transfer"),
-        ("conditional_rebalance", "Rebalance based on conditions", "trigger -> condition -> swap -> aave"),
+        ("conditional_rebalance", "Rebalance based on price conditions", "trigger -> condition(true: swap->aave, false: hold)"),
+        ("borrow_strategy", "Supply collateral and borrow stablecoin", "trigger -> aave(supply) -> aave(borrow)"),
+        ("repay_loan", "Repay Aave debt", "trigger -> swap(get-asset) -> aave(repay)"),
+        ("withdraw_and_transfer", "Withdraw from Aave and send to address", "trigger -> aave(withdraw) -> transfer"),
+        ("ai_portfolio_analysis", "Use AI with blockchain data for decisions", "trigger -> mcp(blockscout) -> ai(analyze) -> swap"),
+        ("automated_yield_optimizer", "AI analyzes APY and automatically optimizes", "trigger -> mcp(defi-analytics) -> ai(decide) -> condition -> aave"),
     ]
     
     for name, description, sequence in strategies:
@@ -179,12 +231,16 @@ def initialize_defi_knowledge(metta: MeTTa):
     
     # Operations: (operation <keyword> <node-type> <description>)
     operations = [
-        ("swap_tokens", "swap", "Exchange one token for another"),
-        ("supply_to_aave", "aave", "Supply assets to Aave V3"),
-        ("borrow_from_aave", "aave", "Borrow assets from Aave V3"),
-        ("transfer_tokens", "transfer", "Send tokens to an address"),
-        ("check_condition", "condition", "Evaluate a condition"),
-        ("ai_decision", "ai", "Make AI-powered decision"),
+        ("swap_tokens", "swap", "Exchange one token for another using Uniswap or 1inch"),
+        ("supply_to_aave", "aave", "Supply assets to Aave V3 to earn interest"),
+        ("borrow_from_aave", "aave", "Borrow assets from Aave V3 against collateral"),
+        ("withdraw_from_aave", "aave", "Withdraw supplied assets from Aave V3"),
+        ("repay_aave_debt", "aave", "Repay borrowed assets to Aave V3"),
+        ("transfer_tokens", "transfer", "Send ERC20 or native tokens to an address"),
+        ("check_condition", "condition", "Evaluate comparison with true/false branches"),
+        ("ai_decision", "ai", "Make AI-powered decision using ASI:One"),
+        ("connect_mcp_tool", "mcp", "Connect external data via Model Context Protocol"),
+        ("ai_with_tools", "ai+mcp", "AI agent with access to blockchain data tools"),
     ]
     
     for keyword, node_type, description in operations:

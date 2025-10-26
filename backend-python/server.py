@@ -72,8 +72,18 @@ rag = DeFiWorkflowRAG(metta)
 print("🤖 Initializing ASI:One Client...")
 asi_client = ASIOneClient()
 
-print("🔌 Initializing MCP Client...")
-mcp_client = MCPClientSync()
+# Don't initialize MCP client on startup - it will be lazy-loaded when needed
+print("🔌 MCP Client ready (will connect on first use)...")
+mcp_client = None  # Lazy initialization
+
+def get_mcp_client():
+    """Lazy-load MCP client only when needed"""
+    global mcp_client
+    if mcp_client is None:
+        from utils.mcp_client import MCPClientSync
+        print("🔌 Creating MCP Client (lazy mode)...")
+        mcp_client = MCPClientSync(auto_connect=False)  # Don't connect until first use
+    return mcp_client
 
 print(f"""
 ✅ Flask Server initialized!
@@ -788,11 +798,14 @@ def get_mcp_tools():
         
         print(f"🔌 Getting MCP tools for servers: {servers}")
         
+        # Lazy-load MCP client
+        client = get_mcp_client()
+        
         all_tools = []
         
         for server_type in servers:
             try:
-                tools = mcp_client.get_tools_for_server(server_type)
+                tools = client.get_tools_for_server(server_type)
                 all_tools.extend(tools)
                 print(f"   ✓ Loaded {len(tools)} tools from {server_type}")
             except Exception as e:
@@ -850,7 +863,10 @@ def execute_mcp_tool():
         print(f"🔌 Executing MCP tool: {tool_name} on {server_type}")
         print(f"   Arguments: {arguments}")
         
-        result = mcp_client.execute_tool(tool_name, arguments)
+        # Lazy-load MCP client
+        client = get_mcp_client()
+        
+        result = client.execute_tool(tool_name, arguments)
         
         print(f"✅ MCP tool executed successfully")
         

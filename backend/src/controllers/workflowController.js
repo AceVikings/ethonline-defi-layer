@@ -1,5 +1,6 @@
 import { getPKPInfo } from '@lit-protocol/vincent-app-sdk/jwt';
 import { ethers } from 'ethers';
+import * as AaveAddressBook from '@bgd-labs/aave-address-book';
 import Workflow from '../models/Workflow.js';
 import ExecutionHistory from '../models/ExecutionHistory.js';
 import { getRpcUrl, getChainId, normalizeTokenAddress } from '../config/chains.js';
@@ -7,9 +8,11 @@ import {
   generateSignedUniswapQuote,
   getUniswapSwapAbilityClient,
   getERC20ApprovalAbilityClient,
+  getAaveAbilityClient,
 } from '../config/vincent.js';
 import { wrapETH, getWETHBalance } from '../utils/wethWrapper.js';
 import { transferNativeToken, transferERC20Token } from '../utils/tokenTransfer.js';
+import { resolveAaveToken } from '../config/aaveTokens.js';
 
 export const getWorkflows = async (req, res) => {
   try {
@@ -342,7 +345,7 @@ async function executeNode(node, nodeMap, edgeMap, executionSteps, pkpInfo, exec
         break;
         
       case 'condition':
-        result = await executeConditionNode(node, pkpInfo, previousOutputs);
+        result = await executeConditionNode(node, pkpInfo, previousOutputs, nodeMap, edgeMap);
         console.log(`│  ✓ Condition evaluated:`, result);
         break;
         
@@ -649,6 +652,7 @@ async function executeSwapNode(node, pkpInfo) {
       success: true,
       message: 'Swap executed successfully via Uniswap V3',
       chain: config.chain,
+      chainId: getChainId(config.chain),
       fromToken: config.fromToken,
       toToken: config.toToken,
       amountIn: config.amount,
@@ -657,6 +661,7 @@ async function executeSwapNode(node, pkpInfo) {
       wrapTxHash, // null if no wrapping was needed
       approvalTxHash,
       swapTxHash,
+      txHash: swapTxHash, // Primary transaction hash for notifications
       uniswapRouter: uniswapRouterAddress,
       // Standardized output data for next nodes
       output: {
@@ -674,11 +679,14 @@ async function executeSwapNode(node, pkpInfo) {
 }
 
 async function executeAaveNode(node, pkpInfo, previousOutputs = []) {
-  // TODO: Implement actual Aave interaction
   const config = node.config || {};
   
   if (!config.action || !config.asset) {
     throw new Error('Aave node missing required configuration (action, asset)');
+  }
+  
+  if (!config.chain) {
+    throw new Error('Aave node missing chain configuration');
   }
   
   // Get amount from previous node if not specified
@@ -696,44 +704,250 @@ async function executeAaveNode(node, pkpInfo, previousOutputs = []) {
     throw new Error('Aave node missing amount (not specified and no previous output)');
   }
   
-  console.log('   [Aave] Executing Aave:', config.action, config.asset, amount);
+  console.log('   [Aave] Executing Aave operation via Vincent SDK...');
+  console.log(`   Chain: ${config.chain}`);
+  console.log(`   Operation: ${config.action}`);
+  console.log(`   Asset: ${config.asset}`);
+  console.log(`   Amount: ${amount}`);
   
-  // Determine output based on action
-  let output;
-  if (config.action === 'supply') {
-    output = {
-      aTokenReceived: `a${config.asset}`,
-      amountReceived: amount,
-      tokenSymbol: `a${config.asset}`,
+  try {
+    const rpcUrl = getRpcUrl(config.chain);
+    const chainId = getChainId(config.chain);
+    const delegatorPkpEthAddress = pkpInfo.ethAddress;
+    
+    // Resolve token symbol to address if needed (e.g., "USDC" -> "0x...")
+    const assetAddress = resolveAaveToken(config.chain, config.asset);
+    console.log(`   Resolved asset address: ${assetAddress}`);
+    
+    // Get Aave ability client
+    const aaveClient = getAaveAbilityClient();
+    
+    // Prepare parameters for Aave ability
+    // Note: Aave ability expects human-readable amounts (e.g., "0.01"), not wei
+    const aaveParams = {
+      operation: config.action, // 'supply', 'withdraw', 'borrow', 'repay'
+      asset: assetAddress, // Token contract address
+      amount: amount.toString(), // Human-readable amount (e.g., "0.001")
+      chain: config.chain,
+      rpcUrl, // RPC URL for the chain (required by Aave ability for precheck)
     };
-  } else if (config.action === 'withdraw') {
-    output = {
-      tokenReceived: config.asset,
-      amountReceived: amount,
-      tokenSymbol: config.asset,
+    
+    // Add interestRateMode for borrow/repay (1=Stable, 2=Variable)
+    if (config.action === 'borrow' || config.action === 'repay') {
+      aaveParams.interestRateMode = config.interestRateMode || 2; // Default to variable rate
+    }
+    
+    console.log(`   Aave params:`, JSON.stringify(aaveParams, null, 2));
+    console.log(`   PKP Address:`, delegatorPkpEthAddress);
+    
+    console.log(`   → Step 1: Running Aave precheck...`);
+    
+    // Run precheck - do NOT pass rpcUrl, it's handled internally by the ability
+    let precheckResult;
+    try {
+      precheckResult = await aaveClient.precheck(
+        aaveParams,
+        {
+          delegatorPkpEthAddress,
+        }
+      );
+    } catch (err) {
+      console.error(`   ✗ Precheck error:`, err);
+      throw new Error(`Aave precheck failed: ${err.message}`);
+    }
+    
+    console.log(`   Precheck result:`, JSON.stringify(precheckResult, null, 2));
+    
+    // Check if precheck failed due to insufficient allowance
+    if (!precheckResult.success) {
+      const errorMsg = precheckResult.result?.error || precheckResult.runtimeError || precheckResult.error || 'Unknown error';
+      
+      // Check if it's an allowance issue for supply or repay operations
+      const isAllowanceError = errorMsg.includes('Insufficient allowance') || 
+                                errorMsg.includes('approve') || 
+                                errorMsg.includes('allowance');
+      const needsApproval = (config.action === 'supply' || config.action === 'repay') && isAllowanceError;
+      
+      if (needsApproval) {
+        console.log(`   ⚠️  Insufficient allowance detected - handling ERC20 approval...`);
+        
+        // Get Aave Pool address from the official Aave address book
+        // Using the same source as the vincent-ability-aave package
+        let aavePoolAddress;
+        try {
+          const chainMap = {
+            ethereum: 'AaveV3Ethereum',
+            sepolia: 'AaveV3Sepolia',
+            polygon: 'AaveV3Polygon',
+            arbitrum: 'AaveV3Arbitrum',
+            optimism: 'AaveV3Optimism',
+            base: 'AaveV3Base',
+            basesepolia: 'AaveV3BaseSepolia',
+            avalanche: 'AaveV3Avalanche',
+            avalanchefuji: 'AaveV3AvalancheFuji',
+          };
+          
+          const addressBookKey = chainMap[config.chain];
+          if (!addressBookKey || !AaveAddressBook[addressBookKey]) {
+            throw new Error(`Aave address book not found for chain: ${config.chain}`);
+          }
+          
+          aavePoolAddress = AaveAddressBook[addressBookKey].POOL;
+          console.log(`   → Using official Aave Pool address: ${aavePoolAddress}`);
+        } catch (error) {
+          console.error(`   ✗ Failed to get Aave Pool address:`, error.message);
+          throw new Error(`Failed to get Aave Pool address for chain ${config.chain}: ${error.message}`);
+        }
+        
+        console.log(`   → Aave Pool address: ${aavePoolAddress}`);
+        console.log(`   → Approving ${assetAddress} for Aave Pool...`);
+        
+        try {
+          const erc20ApprovalClient = getERC20ApprovalAbilityClient();
+          
+          // Calculate amount in wei for approval (ERC20 approval needs wei, but Aave ability uses human-readable)
+          const decimals = assetAddress.toLowerCase().includes('usdc') || 
+                          assetAddress.toLowerCase().includes('usdt') ? 6 : 18;
+          const amountWei = ethers.utils.parseUnits(amount.toString(), decimals).toString();
+          
+          console.log(`   → Token decimals: ${decimals}`);
+          console.log(`   → Amount for approval: ${amount} ${config.asset} = ${amountWei} wei`);
+          
+          // Use max approval to avoid future approval transactions
+          const maxApproval = ethers.constants.MaxUint256.toString();
+          console.log(`   → Using max approval for future-proofing: ${maxApproval}`);
+          
+          // Execute approval
+          const approvalResult = await erc20ApprovalClient.execute(
+            {
+              rpcUrl,
+              chainId,
+              spenderAddress: aavePoolAddress,
+              tokenAddress: assetAddress,
+              tokenAmount: maxApproval, // Use max approval instead of exact amount
+              alchemyGasSponsor: false,
+            },
+            {
+              delegatorPkpEthAddress,
+            }
+          );
+          
+          if (!approvalResult.success) {
+            throw new Error(`Approval failed: ${approvalResult.runtimeError || 'Unknown error'}`);
+          }
+          
+          const txHash = approvalResult.result?.approvalTxHash || approvalResult.result?.txHash;
+          console.log(`   ✓ ERC20 approval successful`);
+          if (txHash) {
+            console.log(`   → Approval TX: ${txHash}`);
+          }
+          console.log(`   → Approved amount: ${amountWei} wei (${amount} ${config.asset})`);
+          
+          // Wait a bit for the approval to propagate (blockchain confirmation)
+          console.log(`   → Waiting 3 seconds for approval to confirm...`);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          console.log(`   → Retrying Aave precheck after approval...`);
+          
+          // Retry precheck after approval
+          precheckResult = await aaveClient.precheck(
+            aaveParams,
+            {
+              delegatorPkpEthAddress,
+            }
+          );
+          
+          console.log(`   Retry precheck result:`, precheckResult.success ? 'Success' : 'Failed');
+          if (!precheckResult.success) {
+            console.log(`   Retry precheck error:`, precheckResult.result?.error || precheckResult.runtimeError);
+          }
+        } catch (approvalError) {
+          console.error(`   ✗ Approval failed:`, approvalError.message);
+          throw new Error(`Failed to approve tokens for Aave: ${approvalError.message}`);
+        }
+      }
+      
+      // Check if precheck still failed after approval attempt
+      if (!precheckResult.success) {
+        const finalErrorMsg = precheckResult.result?.error || precheckResult.runtimeError || precheckResult.error || 'Unknown error';
+        console.error(`   ✗ Precheck failed:`, finalErrorMsg);
+        throw new Error(`Aave precheck failed: ${finalErrorMsg}`);
+      }
+    }
+    
+    // Log precheck details
+    if (precheckResult.result) {
+      console.log(`   Precheck details:`, JSON.stringify(precheckResult.result, null, 2));
+      
+      if (precheckResult.result.userBalance) {
+        console.log(`   User balance: ${precheckResult.result.userBalance}`);
+      }
+      if (precheckResult.result.borrowCapacity) {
+        console.log(`   Borrow capacity: ${precheckResult.result.borrowCapacity}`);
+      }
+    }
+    
+    console.log(`   → Step 2: Executing Aave ${config.action}...`);
+    
+    // Execute the operation - do NOT pass rpcUrl, it's handled internally
+    const executeResult = await aaveClient.execute(
+      aaveParams,
+      {
+        delegatorPkpEthAddress,
+      }
+    );
+    
+    if (!executeResult.success) {
+      throw new Error(`Aave execution failed: ${executeResult.runtimeError || 'Unknown error'}`);
+    }
+    
+    const txHash = executeResult.result.data.txHash;
+    console.log(`   ✓ Aave ${config.action} successful: ${txHash}`);
+    
+    // Determine output based on action
+    let output;
+    if (config.action === 'supply') {
+      output = {
+        aTokenReceived: `a${getTokenSymbol(config.asset)}`,
+        amountReceived: amount,
+        tokenSymbol: `a${getTokenSymbol(config.asset)}`,
+      };
+    } else if (config.action === 'withdraw') {
+      output = {
+        tokenReceived: config.asset,
+        amountReceived: amount,
+        tokenSymbol: getTokenSymbol(config.asset),
+      };
+    } else if (config.action === 'borrow') {
+      output = {
+        tokenBorrowed: config.asset,
+        amountBorrowed: amount,
+        tokenSymbol: getTokenSymbol(config.asset),
+      };
+    } else if (config.action === 'repay') {
+      output = {
+        tokenRepaid: config.asset,
+        amountRepaid: amount,
+      };
+    }
+    
+    return {
+      success: true,
+      message: `Aave ${config.action} executed successfully`,
+      chain: config.chain,
+      chainId: getChainId(config.chain),
+      action: config.action,
+      asset: config.asset,
+      amount: amount,
+      txHash,
+      interestRateMode: aaveParams.interestRateMode,
+      useAsCollateral: config.useAsCollateral || false,
+      output,
     };
-  } else if (config.action === 'borrow') {
-    output = {
-      tokenBorrowed: config.asset,
-      amountBorrowed: amount,
-      tokenSymbol: config.asset,
-    };
-  } else if (config.action === 'repay') {
-    output = {
-      tokenRepaid: config.asset,
-      amountRepaid: amount,
-    };
+  } catch (error) {
+    console.error(`   ✗ Aave ${config.action} failed:`, error.message);
+    throw new Error(`Aave execution failed: ${error.message}`);
   }
-  
-  return {
-    success: true,
-    message: `Aave ${config.action} executed (stub)`,
-    action: config.action,
-    asset: config.asset,
-    amount: amount,
-    useAsCollateral: config.useAsCollateral || false,
-    output,
-  };
 }
 
 async function executeTransferNode(node, pkpInfo) {
@@ -811,6 +1025,8 @@ async function executeTransferNode(node, pkpInfo) {
 
     return {
       success: true,
+      chain: config.chain,
+      chainId: getChainId(config.chain),
       txHash: transferResult.txHash,
       recipient: config.recipient,
       amount: config.amount,
@@ -825,26 +1041,130 @@ async function executeTransferNode(node, pkpInfo) {
   }
 }
 
-async function executeConditionNode(node, pkpInfo) {
-  // TODO: Implement actual condition evaluation
+async function executeConditionNode(node, pkpInfo, previousOutputs = [], nodeMap = new Map(), edgeMap = new Map()) {
   const config = node.config || {};
   
-  if (!config.leftValue || !config.operator || !config.rightValue) {
-    throw new Error('Condition node missing required configuration (leftValue, operator, rightValue)');
+  console.log('   [Condition] Evaluating condition...');
+  
+  // Get incoming edges to find value1 and value2 nodes
+  const incomingEdges = Array.from(edgeMap.values()).flat().filter(edge => edge.to === node.id);
+  console.log(`   [Condition] Found ${incomingEdges.length} incoming edges`);
+  
+  // Extract values from side inputs (value1 and value2)
+  let value1 = config.leftValue;
+  let value2 = config.rightValue;
+  
+  // Check for value inputs from side nodes
+  for (const edge of incomingEdges) {
+    const sourceNode = nodeMap.get(edge.from);
+    if (!sourceNode) continue;
+    
+    console.log(`   [Condition] Checking edge from ${sourceNode.type} (handle: ${edge.targetHandle})`);
+    
+    // Get the output from the source node
+    const sourceOutput = previousOutputs.find(output => output.nodeId === sourceNode.id);
+    
+    if (edge.targetHandle === 'value1' && sourceOutput) {
+      // Extract numeric value from source output
+      value1 = extractNumericValue(sourceOutput.output);
+      console.log(`   [Condition] Value1 from ${sourceNode.type}: ${value1}`);
+    } else if (edge.targetHandle === 'value2' && sourceOutput) {
+      value2 = extractNumericValue(sourceOutput.output);
+      console.log(`   [Condition] Value2 from ${sourceNode.type}: ${value2}`);
+    }
   }
   
-  console.log('   [Condition] Evaluating condition:', config);
+  const operator = config.operator || '==';
   
-  // Simple stub evaluation - always returns true for now
-  const conditionMet = true;
+  console.log(`   [Condition] Comparing: ${value1} ${operator} ${value2}`);
+  
+  // Perform comparison
+  let conditionMet = false;
+  
+  try {
+    const num1 = parseFloat(value1);
+    const num2 = parseFloat(value2);
+    
+    switch (operator) {
+      case '==':
+      case '===':
+        conditionMet = num1 === num2;
+        break;
+      case '!=':
+      case '!==':
+        conditionMet = num1 !== num2;
+        break;
+      case '>':
+        conditionMet = num1 > num2;
+        break;
+      case '>=':
+        conditionMet = num1 >= num2;
+        break;
+      case '<':
+        conditionMet = num1 < num2;
+        break;
+      case '<=':
+        conditionMet = num1 <= num2;
+        break;
+      default:
+        throw new Error(`Unsupported operator: ${operator}`);
+    }
+  } catch (error) {
+    throw new Error(`Failed to evaluate condition: ${error.message}`);
+  }
+  
+  console.log(`   [Condition] Result: ${conditionMet ? 'TRUE' : 'FALSE'}`);
   
   return {
     success: true,
     conditionMet,
-    leftValue: config.leftValue,
-    operator: config.operator,
-    rightValue: config.rightValue,
+    value1,
+    operator,
+    value2,
+    message: `Condition ${value1} ${operator} ${value2} is ${conditionMet ? 'TRUE' : 'FALSE'}`,
   };
+}
+
+// Helper function to extract numeric values from various output formats
+function extractNumericValue(output) {
+  if (output === null || output === undefined) {
+    return 0;
+  }
+  
+  // If it's already a number
+  if (typeof output === 'number') {
+    return output;
+  }
+  
+  // If it's a string that can be parsed as a number
+  if (typeof output === 'string') {
+    const parsed = parseFloat(output);
+    if (!isNaN(parsed)) {
+      return parsed;
+    }
+  }
+  
+  // If it's an object, try to extract common numeric fields
+  if (typeof output === 'object') {
+    // Try common field names for amounts
+    const numericFields = ['amount', 'value', 'balance', 'price', 'total', 'count'];
+    for (const field of numericFields) {
+      if (output[field] !== undefined) {
+        const parsed = parseFloat(output[field]);
+        if (!isNaN(parsed)) {
+          return parsed;
+        }
+      }
+    }
+    
+    // If output has a nested output object
+    if (output.output) {
+      return extractNumericValue(output.output);
+    }
+  }
+  
+  // Default to 0 if we can't extract a number
+  return 0;
 }
 
 async function executeAINode(node, pkpInfo, previousOutputs = [], nodeMap = new Map(), edgeMap = new Map()) {
@@ -984,11 +1304,21 @@ async function executeAINode(node, pkpInfo, previousOutputs = [], nodeMap = new 
           
           if (toolResponse.ok) {
             const toolData = await toolResponse.json();
+            
+            // Extract transaction hashes from the result for notifications
+            const txHashRegex = /0x[a-fA-F0-9]{64}/g;
+            const txHashes = toolData.result ? toolData.result.match(txHashRegex) : null;
+            
             toolResults.push({
               tool: toolName,
-              result: toolData.result
+              result: toolData.result,
+              txHashes: txHashes || [],
+              chainId: toolArgs.chainId || '8453' // Default to Base
             });
             console.log(`   [AI/ASI:One] Tool result:`, toolData.result);
+            if (txHashes && txHashes.length > 0) {
+              console.log(`   [AI/ASI:One] Found ${txHashes.length} transaction(s):`, txHashes);
+            }
           }
         } catch (err) {
           console.error(`   [AI/ASI:One] Tool execution error:`, err.message);
@@ -1046,6 +1376,19 @@ async function executeAINode(node, pkpInfo, previousOutputs = [], nodeMap = new 
       }
     }
     
+    // Collect all transaction hashes and chain IDs from tool results
+    const allTxHashes = [];
+    toolResults.forEach(tr => {
+      if (tr.txHashes && tr.txHashes.length > 0) {
+        tr.txHashes.forEach(hash => {
+          allTxHashes.push({
+            hash,
+            chainId: tr.chainId || '8453'
+          });
+        });
+      }
+    });
+    
     return {
       success: true,
       message: 'AI analysis completed',
@@ -1053,9 +1396,11 @@ async function executeAINode(node, pkpInfo, previousOutputs = [], nodeMap = new 
       response: finalResponse,
       model: 'asi1-mini',
       mcpToolsUsed: toolCalls.length,
+      transactions: allTxHashes, // Include transaction info for frontend notifications
       output: {
         response: finalResponse,
         toolCallsMade: toolCalls.length,
+        transactions: allTxHashes,
         timestamp: new Date().toISOString()
       }
     };
@@ -1236,13 +1581,18 @@ async function executeBlockscoutMCP(config, pkpInfo, previousOutputs) {
     
     console.log('   [Blockscout MCP] Result:', data);
     
+    // Extract chainId from parameters
+    const resultChainId = parameters.chainId || '1';
+    
     return {
       success: true,
       message: `Blockscout MCP tool '${tool}' executed successfully`,
       tool,
+      chainId: resultChainId,
       data,
       output: {
         tool,
+        chainId: resultChainId,
         result: data,
         timestamp: new Date().toISOString()
       }

@@ -15,6 +15,8 @@ import os
 import sys
 from pathlib import Path
 from uagents import Agent, Context, Model
+from uagents.setup import fund_agent_if_low
+import json
 from dotenv import load_dotenv
 
 # Add parent directory to path
@@ -27,22 +29,31 @@ from utils.asi_one_client import ASIOneClient
 load_dotenv()
 
 # Define message models
-class WorkflowQuery(Model):
-    """Query to generate a workflow"""
-    query: str
+class WorkflowRequest(Model):
+    """User request to generate a workflow"""
+    user_query: str
+    user_address: str = ""
 
-class WorkflowResult(Model):
-    """Generated workflow result"""
-    success: bool
-    workflow: dict = {}
-    error: str = ""
-    reasoning: str = ""
+class WorkflowResponse(Model):
+    """Generated workflow response"""
+    workflow_json: str
+    explanation: str
+    strategy_used: str = ""
 
-# Initialize MeTTa and ASI:One
+class QuestionRequest(Model):
+    """User question about DeFi or workflows"""
+    question: str
+
+class QuestionResponse(Model):
+    """Answer to user question"""
+    answer: str
+
+# Initialize MeTTa knowledge graph and RAG
 print("🧠 Initializing MeTTa Knowledge Graph...")
 metta = get_metta_instance()
 rag = DeFiWorkflowRAG(metta)
 
+# Initialize ASI:One client
 print("🤖 Initializing ASI:One Client...")
 asi_client = ASIOneClient()
 
@@ -56,6 +67,9 @@ agent = Agent(
     port=PORT,
     mailbox=True,  # Enable mailbox mode
 )
+
+# Fund agent if needed
+fund_agent_if_low(agent.wallet.address())
 
 print(f"""
 ╔══════════════════════════════════════════════════════════════╗
@@ -75,92 +89,259 @@ print(f"""
 
 @agent.on_event("startup")
 async def startup(ctx: Context):
+    """Runs when agent starts up"""
     ctx.logger.info(f"✅ Agent started: {ctx.agent.address}")
     ctx.logger.info("📬 Mailbox mode enabled - connecting to Agentverse...")
     ctx.logger.info("🧠 MeTTa Knowledge Graph ready")
 
-@agent.on_message(model=WorkflowQuery)
-async def handle_query(ctx: Context, sender: str, msg: WorkflowQuery):
-    """Handle workflow generation queries"""
-    ctx.logger.info(f"📨 Query from {sender}: {msg.query}")
+@agent.on_message(model=WorkflowRequest)
+async def handle_workflow_request(ctx: Context, sender: str, msg: WorkflowRequest):
+    """
+    Handle requests to generate a new DeFi workflow.
+    
+    Process:
+    1. Classify user intent using ASI:One
+    2. Query MeTTa knowledge graph for relevant strategies/operations
+    3. Generate workflow JSON structure
+    4. Return workflow to user
+    """
+    
+    ctx.logger.info(f"� Workflow request from {sender}")
+    ctx.logger.info(f"   Query: '{msg.user_query}'")
     
     try:
-        # Classify intent using ASI:One
-        intent_data = await asi_client.classify_intent(msg.query)
-        intent = intent_data.get("intent", "create_workflow")
-        keywords = intent_data.get("keywords", [])
+        # Step 1: Classify intent
+        ctx.logger.info("🔍 Classifying user intent...")
+        intent, keyword = asi_client.get_intent_and_keyword(msg.user_query)
+        ctx.logger.info(f"   Intent: {intent}, Keyword: {keyword}")
         
-        ctx.logger.info(f"Intent: {intent}, Keywords: {keywords}")
+        # Step 2: Query knowledge graph
+        ctx.logger.info("📚 Querying MeTTa knowledge graph...")
         
-        # Generate workflow
-        workflow = {
-            "nodes": [
-                {
-                    "id": "node-1",
-                    "type": "trigger",
-                    "data": {"label": "Trigger", "config": {"triggerType": "manual"}},
-                    "position": {"x": 100, "y": 100}
-                }
-            ],
-            "edges": []
-        }
+        workflow_json = None
+        strategy_used = ""
         
-        node_id = 2
-        prev_id = "node-1"
+        if intent == "strategy":
+            # Find matching strategy
+            strategy_result = rag.find_strategy_for_intent(msg.user_query)
+            ctx.logger.info(f"   Strategy: {strategy_result}")
+            
+            if strategy_result:
+                strategy_used = keyword
+                # Generate workflow from strategy
+                workflow_json = generate_workflow_from_strategy(strategy_result, msg.user_query)
+            
+        elif intent == "operation":
+            # Find matching operation
+            operation_result = rag.query_operation(keyword)
+            ctx.logger.info(f"   Operation: {operation_result}")
+            
+            if operation_result:
+                workflow_json = generate_workflow_from_operation(operation_result, msg.user_query)
         
-        # Add swap node if query mentions swap/exchange
-        if any(k.lower() in ["swap", "exchange", "trade"] for k in keywords):
-            workflow["nodes"].append({
-                "id": f"node-{node_id}",
-                "type": "swap",
-                "data": {
-                    "label": "Token Swap",
-                    "config": {"protocol": "uniswap", "tokenIn": "ETH", "tokenOut": "USDC"}
-                },
-                "position": {"x": 300, "y": 100}
-            })
-            workflow["edges"].append({
-                "id": f"edge-{prev_id}-{node_id}",
-                "source": prev_id,
-                "target": f"node-{node_id}"
-            })
-            prev_id = f"node-{node_id}"
-            node_id += 1
+        # Step 3: If no match, use ASI:One to generate
+        if not workflow_json:
+            ctx.logger.info("🤖 Using ASI:One to generate workflow...")
+            
+            # Provide context from knowledge graph
+            context = {
+                "strategies": rag.query_all_strategies(),
+                "protocols": rag.query_protocols(),
+                "node_types": ["trigger", "swap", "aave", "transfer", "condition", "ai", "mcp"]
+            }
+            
+            workflow_json = asi_client.generate_workflow_from_intent(msg.user_query, context)
         
-        # Add aave node if query mentions lending/supply
-        if any(k.lower() in ["aave", "supply", "lend", "yield"] for k in keywords):
-            workflow["nodes"].append({
-                "id": f"node-{node_id}",
-                "type": "aave",
-                "data": {
-                    "label": "Aave Supply",
-                    "config": {"action": "supply", "asset": "USDC", "chain": "basesepolia"}
-                },
-                "position": {"x": 500, "y": 100}
-            })
-            workflow["edges"].append({
-                "id": f"edge-{prev_id}-{node_id}",
-                "source": prev_id,
-                "target": f"node-{node_id}"
-            })
+        # Step 4: Generate explanation
+        ctx.logger.info("💬 Generating workflow explanation...")
+        explanation = asi_client.explain_workflow(workflow_json)
         
         # Send response
-        response = WorkflowResult(
-            success=True,
-            workflow=workflow,
-            reasoning=f"Generated based on intent: {intent}"
+        response = WorkflowResponse(
+            workflow_json=json.dumps(workflow_json, indent=2),
+            explanation=explanation,
+            strategy_used=strategy_used
         )
         
         await ctx.send(sender, response)
-        ctx.logger.info(f"✅ Workflow sent to {sender}")
+        ctx.logger.info("✅ Workflow generated and sent!")
         
     except Exception as e:
-        ctx.logger.error(f"❌ Error: {str(e)}")
-        error_response = WorkflowResult(
-            success=False,
-            error=str(e)
+        ctx.logger.error(f"❌ Error generating workflow: {e}")
+        
+        # Send error response
+        error_response = WorkflowResponse(
+            workflow_json=json.dumps({"error": str(e)}),
+            explanation=f"Sorry, I encountered an error: {str(e)}",
+            strategy_used=""
         )
         await ctx.send(sender, error_response)
 
+
+@agent.on_message(model=QuestionRequest)
+async def handle_question(ctx: Context, sender: str, msg: QuestionRequest):
+    """
+    Handle general questions about DeFi workflows.
+    """
+    
+    ctx.logger.info(f"❓ Question from {sender}: '{msg.question}'")
+    
+    try:
+        # Check if question matches known topics in knowledge graph
+        question_lower = msg.question.lower()
+        
+        answer = None
+        
+        # Query considerations
+        if "gas" in question_lower:
+            result = rag.query_consideration("gas_costs")
+            if result:
+                answer = f"About gas costs: {result[0]}"
+        
+        elif "slippage" in question_lower:
+            result = rag.query_consideration("slippage")
+            if result:
+                answer = f"About slippage: {result[0]}"
+        
+        elif "liquidation" in question_lower or "risk" in question_lower:
+            result = rag.query_consideration("liquidation_risk")
+            if result:
+                answer = f"About liquidation risk: {result[0]}"
+        
+        # Query capabilities
+        elif "swap" in question_lower and "how" in question_lower:
+            result = rag.query_capability("swap")
+            if result:
+                answer = f"Swap node: {result[0]}"
+        
+        elif "aave" in question_lower:
+            result = rag.query_capability("aave")
+            if result:
+                answer = f"Aave node: {result[0]}"
+        
+        # If no match, use ASI:One
+        if not answer:
+            ctx.logger.info("🤖 Using ASI:One to answer question...")
+            # For now, provide generic answer
+            answer = "I can help you build DeFi workflows! Ask me to create a strategy like 'maximize yield' or 'set up dollar cost averaging'."
+        
+        response = QuestionResponse(answer=answer)
+        await ctx.send(sender, response)
+        ctx.logger.info("✅ Answer sent!")
+        
+    except Exception as e:
+        ctx.logger.error(f"❌ Error answering question: {e}")
+        error_response = QuestionResponse(
+            answer=f"Sorry, I encountered an error: {str(e)}"
+        )
+        await ctx.send(sender, error_response)
+
+
+def generate_workflow_from_strategy(strategy_result, user_query: str):
+    """Generate workflow JSON from MeTTa strategy result"""
+    
+    # Parse strategy node sequence
+    # Example: "trigger -> swap_to_usdc -> aave_supply"
+    
+    if not strategy_result or not strategy_result[0]:
+        return None
+    
+    node_sequence = str(strategy_result[0])
+    node_types = [n.strip() for n in node_sequence.split('->')]
+    
+    # Generate workflow structure
+    nodes = []
+    edges = []
+    
+    x_pos = 100
+    y_pos = 100
+    x_spacing = 250
+    
+    for i, node_type in enumerate(node_types):
+        node_id = f"node-{i+1}"
+        
+        # Extract actual node type (remove prefixes like "swap_to_usdc" -> "swap")
+        base_type = node_type.split('_')[0]
+        
+        # Create node
+        node = {
+            "id": node_id,
+            "type": base_type,
+            "data": {
+                "label": base_type.title(),
+                "config": get_default_config(base_type, node_type)
+            },
+            "position": {"x": x_pos + (i * x_spacing), "y": y_pos}
+        }
+        nodes.append(node)
+        
+        # Create edge to previous node
+        if i > 0:
+            edge = {
+                "id": f"edge-{i}",
+                "source": f"node-{i}",
+                "target": node_id,
+                "sourceHandle": "output",
+                "targetHandle": "input"
+            }
+            edges.append(edge)
+    
+    return {
+        "nodes": nodes,
+        "edges": edges
+    }
+
+
+def generate_workflow_from_operation(operation_result, user_query: str):
+    """Generate workflow JSON from MeTTa operation result"""
+    # Similar to strategy but simpler
+    return generate_workflow_from_strategy(operation_result, user_query)
+
+
+def get_default_config(base_type: str, full_type: str):
+    """Get default configuration for a node type"""
+    
+    configs = {
+        "trigger": {"triggerType": "manual"},
+        "swap": {
+            "protocol": "uniswap",
+            "tokenIn": "USDC" if "usdc" in full_type else "ETH",
+            "tokenOut": "ETH" if "usdc" in full_type else "USDC",
+            "amount": "",
+            "slippage": "0.5"
+        },
+        "aave": {
+            "action": "supply" if "supply" in full_type else "borrow",
+            "asset": "USDC",
+            "amount": "",
+            "chain": "basesepolia",
+            "interestRateMode": "2",
+            "useAsCollateral": "true"
+        },
+        "transfer": {
+            "token": "USDC",
+            "recipient": "",
+            "amount": ""
+        },
+        "condition": {
+            "operator": ">",
+            "value1": "",
+            "value2": ""
+        },
+        "ai": {
+            "systemPrompt": "You are a DeFi assistant.",
+            "userPrompt": "",
+            "outputFormat": "text"
+        },
+        "mcp": {
+            "mcpServer": "blockscout",
+            "toolName": "",
+            "parameters": "{}"
+        }
+    }
+    
+    return configs.get(base_type, {})
+
 if __name__ == "__main__":
+    print("🚀 Starting Workflow Builder Agent (Mailbox Mode)...")
     agent.run()

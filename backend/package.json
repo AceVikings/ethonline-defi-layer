@@ -18,6 +18,8 @@
   "license": "MIT",
   "dependencies": {
     "@lit-protocol/lit-node-client": "^7.3.1",
+    "@lit-protocol/vincent-ability-aave": "^0.2.4",
+    "@lit-protocol/vincent-ability-aave-smart-account": "^0.0.8-mma",
     "@lit-protocol/vincent-ability-erc20-approval": "^3.1.0",
     "@lit-protocol/vincent-ability-evm-transaction-signer": "^0.1.4",
     "@lit-protocol/vincent-ability-uniswap-swap": "^5.0.0",

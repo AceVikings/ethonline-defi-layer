@@ -11,12 +11,13 @@ This backend provides AI-powered workflow generation using:
 ```
 backend-python/
 ├── agents/
-│   └── workflow_builder.py    # Main uAgent for workflow generation
+│   └── workflow_builder_mailbox.py    # Main uAgent for workflow generation (Mailbox Mode)
 ├── metta/
 │   ├── knowledge.py            # MeTTa knowledge graph initialization
 │   └── defi_rag.py             # RAG system for knowledge queries
 ├── utils/
-│   └── asi_one_client.py       # ASI:One API integration
+│   ├── asi_one_client.py       # ASI:One API integration
+│   └── mcp_client.py           # MCP (Model Context Protocol) client
 ├── server.py                   # Flask REST API server
 ├── requirements.txt            # Python dependencies
 └── .env                        # Environment configuration
@@ -47,11 +48,23 @@ python server.py
 
 The server will start on `http://localhost:5000`
 
-### 4. (Optional) Run the uAgent
+### 4. Run the Workflow Builder Agent (Mailbox Mode)
 
+**Option 1: Direct Run**
 ```bash
-python agents/workflow_builder.py
+python agents/workflow_builder_mailbox.py
 ```
+
+**Option 2: Background Run**
+```bash
+nohup python agents/workflow_builder_mailbox.py > agent.log 2>&1 &
+```
+
+The agent will:
+1. Initialize the MeTTa knowledge graph
+2. Connect to Agentverse via Mailbox
+3. Display an Inspector URL - click it to connect via Mailbox on Agentverse
+4. Be accessible through ASI:One for natural language workflow generation
 
 ## API Endpoints
 

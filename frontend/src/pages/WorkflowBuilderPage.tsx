@@ -23,6 +23,29 @@ import { showToast } from "../lib/toast";
 import { getTokensForChain, findTokenByAddress } from "../config/tokens";
 import { AIWorkflowBuilder } from "../components/AIWorkflowBuilder";
 import { WorkflowCreationModal } from "../components/WorkflowCreationModal";
+import { useNotification } from "@blockscout/app-sdk";
+
+// Utility function to detect and show transaction notifications
+const detectAndShowTransactions = (
+  text: string,
+  openTxToast: (chainId: string, txHash: string) => Promise<void>,
+  chainId: string = "8453" // Default to Base
+) => {
+  // Regex to match Ethereum transaction hashes (0x followed by 64 hex characters)
+  const txHashRegex = /0x[a-fA-F0-9]{64}/g;
+  const matches = text.match(txHashRegex);
+  
+  if (matches && matches.length > 0) {
+    // Show notification for each unique transaction hash
+    const uniqueHashes = [...new Set(matches)];
+    uniqueHashes.forEach((txHash) => {
+      console.log(`📨 Showing notification for transaction: ${txHash} on chain ${chainId}`);
+      openTxToast(chainId, txHash).catch((err) => {
+        console.error('Failed to show transaction toast:', err);
+      });
+    });
+  }
+};
 
 // Custom node component with dynamic handles based on node type
 const CustomNode = ({ data }: any) => {
@@ -913,9 +936,56 @@ const AaveConfig = ({
   onUpdate: (config: any) => void;
 }) => {
   const action = config.action || "supply";
+  const chain = config.chain || "base";
+
+  // Common Aave tokens per chain
+  const aaveTokens: Record<string, string[]> = {
+    base: ["USDC", "WETH", "cbETH", "USDbC"],
+    basesepolia: ["USDC", "WETH", "DAI"],
+    ethereum: ["USDC", "WETH", "USDT", "DAI", "WBTC", "LINK"],
+    sepolia: ["USDC", "WETH", "DAI", "LINK"],
+    polygon: ["USDC", "WETH", "WMATIC", "USDT", "DAI", "WBTC"],
+    arbitrum: ["USDC", "WETH", "USDT", "DAI", "WBTC", "LINK"],
+    arbitrumsepolia: ["USDC", "WETH", "DAI"],
+    optimism: ["USDC", "WETH", "USDT", "DAI", "WBTC", "LINK"],
+    optimismsepolia: ["USDC", "WETH", "DAI"],
+    avalanche: ["USDC", "WAVAX", "WETH", "USDT", "DAI", "WBTC"],
+    avalanchefuji: ["USDC", "WAVAX", "WETH"],
+  };
+
+  const availableTokens = aaveTokens[chain] || [];
 
   return (
     <div className="space-y-3">
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-2">
+          Chain
+        </label>
+        <select
+          value={chain}
+          onChange={(e) => onUpdate({ ...config, chain: e.target.value, asset: "" })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
+        >
+          <optgroup label="Mainnets">
+            <option value="ethereum">Ethereum</option>
+            <option value="polygon">Polygon</option>
+            <option value="arbitrum">Arbitrum</option>
+            <option value="optimism">Optimism</option>
+            <option value="base">Base</option>
+            <option value="bnb">BNB Chain</option>
+            <option value="avalanche">Avalanche</option>
+          </optgroup>
+          <optgroup label="Testnets">
+            <option value="sepolia">Sepolia</option>
+            <option value="basesepolia">Base Sepolia</option>
+            <option value="arbitrumsepolia">Arbitrum Sepolia</option>
+            <option value="optimismsepolia">Optimism Sepolia</option>
+            <option value="avalanchefuji">Avalanche Fuji</option>
+            <option value="polygonmumbai">Polygon Mumbai</option>
+          </optgroup>
+        </select>
+      </div>
+
       <div>
         <label className="block text-xs font-semibold text-gray-700 mb-2">
           Action
@@ -936,13 +1006,21 @@ const AaveConfig = ({
         <label className="block text-xs font-semibold text-gray-700 mb-2">
           Asset
         </label>
-        <input
-          type="text"
+        <select
           value={config.asset || ""}
           onChange={(e) => onUpdate({ ...config, asset: e.target.value })}
-          placeholder="e.g., USDC, ETH, DAI"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
-        />
+        >
+          <option value="">Select token...</option>
+          {availableTokens.map((token) => (
+            <option key={token} value={token}>
+              {token}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-gray-500 mt-1">
+          Available Aave V3 tokens on {chain}
+        </p>
       </div>
 
       <div>
@@ -957,6 +1035,24 @@ const AaveConfig = ({
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
         />
       </div>
+
+      {(action === "borrow" || action === "repay") && (
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-2">
+            Interest Rate Mode
+          </label>
+          <select
+            value={config.interestRateMode || 2}
+            onChange={(e) =>
+              onUpdate({ ...config, interestRateMode: parseInt(e.target.value) })
+            }
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
+          >
+            <option value={1}>Stable Rate</option>
+            <option value={2}>Variable Rate</option>
+          </select>
+        </div>
+      )}
 
       {action === "supply" && (
         <div className="flex items-center gap-2">
@@ -1392,6 +1488,7 @@ const NodeConfigPanel = ({
 export default function WorkflowBuilderPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { openTxToast } = useNotification();
   const [workflowName, setWorkflowName] = useState("Untitled Workflow");
   const [workflowDescription, setWorkflowDescription] = useState("");
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);

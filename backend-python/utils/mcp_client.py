@@ -57,38 +57,36 @@ class MCPClient:
         print(f"✅ MCP Client initialized with {len(self.tool_definitions)} tools")
     
     async def _connect_to_blockscout_mcp(self) -> None:
-        """Connect to official Blockscout MCP server using SSE."""
+        """Connect to Blockscout MCP server using JSON-RPC over HTTP."""
         try:
-            import mcp
-            from mcp.client.sse import sse_client
-            
             print(f"🔌 Connecting to Blockscout MCP...")
             
-            # Blockscout MCP requires text/event-stream header and longer timeout (180s)
+            # Blockscout uses JSON-RPC 2.0 over HTTP POST
             headers = {
-                'Accept': 'text/event-stream',
-                'Content-Type': 'text/event-stream'
+                'Accept': 'application/json, text/event-stream',
+                'Content-Type': 'application/json'
             }
             
-            # Create SSE client with 180 second timeout
-            async with asyncio.timeout(180):
-                read, write = await self.exit_stack.enter_async_context(
-                    sse_client(self.blockscout_mcp_url, headers=headers)
-                )
+            # First, list available tools
+            list_tools_request = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/list",
+                "params": {}
+            }
+            
+            response = requests.post(
+                self.blockscout_mcp_url,
+                json=list_tools_request,
+                headers=headers,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                tools = result.get('result', {}).get('tools', [])
                 
-                # Create MCP session
-                session = await self.exit_stack.enter_async_context(
-                    mcp.ClientSession(read, write)
-                )
-                
-                await session.initialize()
-                tools_result = await session.list_tools()
-                tools = tools_result.tools
-                
-                self.sessions['blockscout'] = session
-                
-                # Replace fallback tools with MCP tools
-                # First, remove old blockscout_direct tools
+                # Remove old blockscout_direct tools
                 old_tools = [k for k, v in self.tool_server_map.items() if v == 'blockscout_direct']
                 for tool_name in old_tools:
                     if tool_name in self.tool_definitions:
@@ -98,89 +96,72 @@ class MCPClient:
                 
                 # Register MCP tools
                 for tool in tools:
-                    tool_name = f"blockscout_{tool.name}"
+                    tool_name = f"blockscout_{tool['name']}"
                     tool_info = {
                         "type": "function",
                         "function": {
                             "name": tool_name,
-                            "description": tool.description or f"Blockscout: {tool.name}",
-                            "parameters": tool.inputSchema if hasattr(tool, 'inputSchema') else {"type": "object", "properties": {}}
+                            "description": tool.get('description', f"Blockscout: {tool['name']}"),
+                            "parameters": tool.get('inputSchema', {"type": "object", "properties": {}})
                         },
                         "_mcp_server": "blockscout",
-                        "_mcp_tool_name": tool.name
+                        "_mcp_tool_name": tool['name']
                     }
                     self.tool_definitions[tool_name] = tool_info
                     self.tool_server_map[tool_name] = 'blockscout_mcp'
                 
                 print(f"✅ Connected to Blockscout MCP ({len(tools)} tools)")
+                
+                # Store connection info for later use
+                self.sessions['blockscout'] = {
+                    'url': self.blockscout_mcp_url,
+                    'headers': headers,
+                    'type': 'jsonrpc'
+                }
+            else:
+                print(f"⚠️  Blockscout MCP returned status {response.status_code}")
+                print(f"   Using direct API fallback")
             
-        except asyncio.TimeoutError:
+        except requests.exceptions.Timeout:
             print(f"⚠️  Blockscout MCP connection timeout")
             print(f"   Using direct API fallback")
-        except ImportError as e:
-            print(f"⚠️  MCP library not installed: {e}")
-            print(f"   Install with: pip install mcp")
+        except requests.RequestException as e:
+            print(f"⚠️  Blockscout MCP unavailable: {e}")
             print(f"   Using direct API fallback")
         except Exception as e:
-            print(f"⚠️  Blockscout MCP unavailable: {e}")
+            print(f"⚠️  Blockscout MCP error: {e}")
             print(f"   Using direct API fallback")
     
     async def _connect_to_coingecko_mcp(self) -> None:
-        """Connect to official CoinGecko MCP server."""
+        """Connect to CoinGecko MCP server using simple HTTP."""
         try:
-            import mcp
-            from mcp.client.sse import sse_client
-            
             print(f"🔌 Connecting to CoinGecko MCP...")
             
-            # Create SSE client with API key header, text/event-stream, and 180s timeout
+            # CoinGecko expects API key header
             headers = {
                 'x-cg-pro-api-key': self.coingecko_api_key,
                 'Accept': 'text/event-stream',
-                'Content-Type': 'text/event-stream'
+                'User-Agent': 'Mozilla/5.0 (compatible; DeFi-Workflow/1.0)'
             }
             
-            async with asyncio.timeout(180):  # 180 second timeout
-                read, write = await self.exit_stack.enter_async_context(
-                    sse_client(self.coingecko_mcp_url, headers=headers)
-                )
-                
-                # Create MCP session
-                session = await self.exit_stack.enter_async_context(
-                    mcp.ClientSession(read, write)
-                )
-                
-                await session.initialize()
-                tools_result = await session.list_tools()
-                tools = tools_result.tools
-                
-                self.sessions['coingecko'] = session
-                
-                # Register tools with coingecko_ prefix
-                for tool in tools:
-                    tool_name = f"coingecko_{tool.name}"
-                    tool_info = {
-                        "type": "function",
-                        "function": {
-                            "name": tool_name,
-                            "description": tool.description or f"CoinGecko: {tool.name}",
-                            "parameters": tool.inputSchema if hasattr(tool, 'inputSchema') else {"type": "object", "properties": {}}
-                        },
-                        "_mcp_server": "coingecko",
-                        "_mcp_tool_name": tool.name
-                    }
-                    self.tool_definitions[tool_name] = tool_info
-                    self.tool_server_map[tool_name] = 'coingecko_mcp'
-                
-                print(f"✅ Connected to CoinGecko MCP ({len(tools)} tools)")
+            # Simple GET request with timeout
+            response = requests.get(
+                self.coingecko_mcp_url,
+                headers=headers,
+                timeout=10,
+                stream=True
+            )
             
-        except asyncio.TimeoutError:
-            print(f"⚠️  CoinGecko MCP connection timeout")
-        except ImportError as e:
-            print(f"⚠️  MCP library not installed: {e}")
-            print(f"   Install with: pip install mcp")
-        except Exception as e:
+            if response.status_code == 200:
+                print(f"✅ Connected to CoinGecko MCP (using HTTP fallback)")
+                print(f"   Using direct API tools for pricing")
+            else:
+                print(f"⚠️  CoinGecko MCP returned status {response.status_code}")
+            
+        except requests.RequestException as e:
             print(f"⚠️  CoinGecko MCP unavailable: {e}")
+        except Exception as e:
+            print(f"⚠️  CoinGecko MCP error: {e}")
     
     def _setup_blockscout_direct_api(self) -> None:
         """Setup direct API fallback for Blockscout."""
@@ -305,7 +286,7 @@ class MCPClient:
             return f"Unknown server type: {server_type}"
     
     async def _execute_mcp_tool(self, server: str, tool_name: str, arguments: Dict[str, Any]) -> str:
-        """Execute tool via MCP session."""
+        """Execute tool via MCP JSON-RPC."""
         try:
             session = self.sessions.get(server)
             if not session:
@@ -318,15 +299,40 @@ class MCPClient:
             
             original_tool_name = tool_def['_mcp_tool_name']
             
-            # Call the tool via MCP
-            result = await session.call_tool(original_tool_name, arguments)
-            
-            # Format the result
-            if hasattr(result, 'content'):
-                if isinstance(result.content, list):
-                    return '\n'.join([str(item) for item in result.content])
-                return str(result.content)
-            return str(result)
+            # Call the tool via JSON-RPC
+            if session.get('type') == 'jsonrpc':
+                request = {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/call",
+                    "params": {
+                        "name": original_tool_name,
+                        "arguments": arguments
+                    }
+                }
+                
+                response = requests.post(
+                    session['url'],
+                    json=request,
+                    headers=session['headers'],
+                    timeout=30
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    if 'result' in result:
+                        # Format the content
+                        content = result['result'].get('content', [])
+                        if isinstance(content, list):
+                            return '\n'.join([str(item.get('text', item)) for item in content])
+                        return str(content)
+                    elif 'error' in result:
+                        return f"Error: {result['error'].get('message', result['error'])}"
+                    return str(result)
+                else:
+                    return f"HTTP Error {response.status_code}: {response.text[:200]}"
+            else:
+                return f"Unsupported session type for {server}"
             
         except Exception as e:
             return f"Error executing {tool_name} via MCP: {str(e)}"
@@ -501,23 +507,46 @@ class MCPClient:
 class MCPClientSync:
     """Synchronous wrapper for MCPClient."""
     
-    def __init__(self):
+    def __init__(self, auto_connect: bool = False):
+        """
+        Initialize MCP client.
+        
+        Args:
+            auto_connect: If True, connect to MCP servers immediately.
+                         If False, only connect when first needed (lazy loading).
+        """
         self.client = MCPClient()
-        # Initialize eagerly to avoid repeated connection attempts
-        print("🔌 Initializing MCP Client (sync wrapper)...")
-        asyncio.run(self.client.initialize())
-        print(f"✅ MCP Client ready with {len(self.client.tool_definitions)} tools")
+        self._initialized = False
+        
+        if auto_connect:
+            print("🔌 Initializing MCP Client (sync wrapper)...")
+            asyncio.run(self.client.initialize())
+            self._initialized = True
+            print(f"✅ MCP Client ready with {len(self.client.tool_definitions)} tools")
+        else:
+            print("🔌 MCP Client created (will connect on first use)")
+    
+    def _ensure_initialized(self):
+        """Ensure the client is initialized (lazy loading)."""
+        if not self._initialized:
+            print("🔌 Connecting to MCP servers (first use)...")
+            asyncio.run(self.client.initialize())
+            self._initialized = True
+            print(f"✅ MCP Client ready with {len(self.client.tool_definitions)} tools")
     
     def get_tools_for_server(self, server_type: str) -> List[Dict[str, Any]]:
         """Get tools for a server."""
+        self._ensure_initialized()
         return self.client.get_tools_for_server(server_type)
     
     def get_all_tools(self) -> List[Dict[str, Any]]:
         """Get all tools."""
+        self._ensure_initialized()
         return self.client.get_all_tools()
     
     def execute_tool(self, tool_name: str, arguments: Dict[str, Any]) -> str:
         """Execute a tool."""
+        self._ensure_initialized()
         return asyncio.run(self.client.execute_tool(tool_name, arguments))
 
 
