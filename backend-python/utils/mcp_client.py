@@ -49,19 +49,21 @@ class MCPClient:
         
         print("🚀 Initializing MCP Client...")
         
-        # Try to connect to both MCP servers
+        # Try to connect to Blockscout MCP (SSE-based)
         await self._connect_to_blockscout_mcp()
-        await self._connect_to_coingecko_mcp()
+        
+        # Skip CoinGecko MCP (requires paid API)
+        # await self._connect_to_coingecko_mcp()
         
         self.initialized = True
         print(f"✅ MCP Client initialized with {len(self.tool_definitions)} tools")
     
     async def _connect_to_blockscout_mcp(self) -> None:
-        """Connect to Blockscout MCP server using JSON-RPC over HTTP."""
+        """Connect to Blockscout MCP server using JSON-RPC over HTTP with SSE parsing."""
         try:
             print(f"🔌 Connecting to Blockscout MCP...")
             
-            # Blockscout uses JSON-RPC 2.0 over HTTP POST
+            # Blockscout uses JSON-RPC 2.0 over HTTP POST with SSE response format
             headers = {
                 'Accept': 'application/json, text/event-stream',
                 'Content-Type': 'application/json'
@@ -79,58 +81,81 @@ class MCPClient:
                 self.blockscout_mcp_url,
                 json=list_tools_request,
                 headers=headers,
-                timeout=10
+                timeout=30,
+                stream=True  # Enable streaming for SSE
             )
             
             if response.status_code == 200:
-                result = response.json()
-                tools = result.get('result', {}).get('tools', [])
+                # Parse SSE stream to extract JSON-RPC result
+                result = self._parse_sse_stream(response)
                 
-                # Remove old blockscout_direct tools
-                old_tools = [k for k, v in self.tool_server_map.items() if v == 'blockscout_direct']
-                for tool_name in old_tools:
-                    if tool_name in self.tool_definitions:
-                        del self.tool_definitions[tool_name]
-                    if tool_name in self.tool_server_map:
-                        del self.tool_server_map[tool_name]
-                
-                # Register MCP tools
-                for tool in tools:
-                    tool_name = f"blockscout_{tool['name']}"
-                    tool_info = {
-                        "type": "function",
-                        "function": {
-                            "name": tool_name,
-                            "description": tool.get('description', f"Blockscout: {tool['name']}"),
-                            "parameters": tool.get('inputSchema', {"type": "object", "properties": {}})
-                        },
-                        "_mcp_server": "blockscout",
-                        "_mcp_tool_name": tool['name']
-                    }
-                    self.tool_definitions[tool_name] = tool_info
-                    self.tool_server_map[tool_name] = 'blockscout_mcp'
-                
-                print(f"✅ Connected to Blockscout MCP ({len(tools)} tools)")
-                
-                # Store connection info for later use
-                self.sessions['blockscout'] = {
-                    'url': self.blockscout_mcp_url,
-                    'headers': headers,
-                    'type': 'jsonrpc'
-                }
+                if result and 'result' in result and 'tools' in result['result']:
+                    tools = result['result']['tools']
+                    
+                    # Remove old fallback tools
+                    old_tools = [k for k, v in self.tool_server_map.items() if v == 'blockscout_direct']
+                    for tool_name in old_tools:
+                        if tool_name in self.tool_definitions:
+                            del self.tool_definitions[tool_name]
+                        if tool_name in self.tool_server_map:
+                            del self.tool_server_map[tool_name]
+                    
+                    # Register Blockscout MCP tools
+                    for tool in tools:
+                        tool_name = f"blockscout_{tool.get('name', 'unknown')}"
+                        tool_info = {
+                            "type": "function",
+                            "function": {
+                                "name": tool_name,
+                                "description": tool.get('description', f"Blockscout: {tool.get('name')}"),
+                                "parameters": tool.get('inputSchema', {"type": "object", "properties": {}})
+                            },
+                            "_mcp_server": "blockscout",
+                            "_mcp_tool_name": tool.get('name')
+                        }
+                        self.tool_definitions[tool_name] = tool_info
+                        self.tool_server_map[tool_name] = 'blockscout_mcp'
+                    
+                    print(f"✅ Connected to Blockscout MCP ({len(tools)} tools)")
+                    self.sessions['blockscout'] = 'json-rpc'  # Mark as connected
+                    return
+                else:
+                    raise Exception("No tools in MCP response")
             else:
-                print(f"⚠️  Blockscout MCP returned status {response.status_code}")
-                print(f"   Using direct API fallback")
+                raise Exception(f"HTTP {response.status_code}")
             
-        except requests.exceptions.Timeout:
-            print(f"⚠️  Blockscout MCP connection timeout")
-            print(f"   Using direct API fallback")
-        except requests.RequestException as e:
+        except Exception as e:
             print(f"⚠️  Blockscout MCP unavailable: {e}")
             print(f"   Using direct API fallback")
-        except Exception as e:
-            print(f"⚠️  Blockscout MCP error: {e}")
-            print(f"   Using direct API fallback")
+    
+    def _parse_sse_stream(self, response) -> dict:
+        """
+        Parse Server-Sent Events stream and extract final JSON-RPC result.
+        
+        SSE format example:
+            event: message
+            data: {"jsonrpc":"2.0","id":1,"result":{...}}
+        """
+        final_result = None
+        
+        for line in response.iter_lines(decode_unicode=True):
+            if not line:
+                continue
+            
+            # SSE format: "event: message" or "data: {...}"
+            if line.startswith('data: '):
+                data_str = line[6:]  # Remove "data: " prefix
+                try:
+                    data = json.loads(data_str)
+                    
+                    # Look for the final result (has "id" and "result" keys)
+                    if isinstance(data, dict) and 'id' in data and 'result' in data:
+                        final_result = data
+                        # Continue reading to ensure we get the last result
+                except json.JSONDecodeError:
+                    continue
+        
+        return final_result
     
     async def _connect_to_coingecko_mcp(self) -> None:
         """Connect to CoinGecko MCP server using simple HTTP."""
@@ -286,21 +311,18 @@ class MCPClient:
             return f"Unknown server type: {server_type}"
     
     async def _execute_mcp_tool(self, server: str, tool_name: str, arguments: Dict[str, Any]) -> str:
-        """Execute tool via MCP JSON-RPC."""
+        """Execute tool via MCP JSON-RPC with SSE parsing."""
         try:
-            session = self.sessions.get(server)
-            if not session:
-                return f"Not connected to {server} MCP server"
-            
-            # Get the original tool name (without prefix)
-            tool_def = self.tool_definitions.get(tool_name)
-            if not tool_def or '_mcp_tool_name' not in tool_def:
-                return f"Tool definition not found for {tool_name}"
-            
-            original_tool_name = tool_def['_mcp_tool_name']
-            
-            # Call the tool via JSON-RPC
-            if session.get('type') == 'jsonrpc':
+            # Check if connected via JSON-RPC
+            if server == 'blockscout' and self.sessions.get('blockscout') == 'json-rpc':
+                # Get the original tool name (without prefix)
+                tool_def = self.tool_definitions.get(tool_name)
+                if not tool_def or '_mcp_tool_name' not in tool_def:
+                    return f"Tool definition not found for {tool_name}"
+                
+                original_tool_name = tool_def['_mcp_tool_name']
+                
+                # Call the tool via JSON-RPC
                 request = {
                     "jsonrpc": "2.0",
                     "id": 1,
@@ -311,28 +333,38 @@ class MCPClient:
                     }
                 }
                 
+                headers = {
+                    'Accept': 'application/json, text/event-stream',
+                    'Content-Type': 'application/json'
+                }
+                
                 response = requests.post(
-                    session['url'],
+                    self.blockscout_mcp_url,
                     json=request,
-                    headers=session['headers'],
-                    timeout=30
+                    headers=headers,
+                    timeout=60,  # Longer timeout for tool execution
+                    stream=True  # Enable SSE parsing
                 )
                 
                 if response.status_code == 200:
-                    result = response.json()
-                    if 'result' in result:
-                        # Format the content
+                    # Parse SSE stream to get final result
+                    result = self._parse_sse_stream(response)
+                    
+                    if result and 'result' in result:
+                        # Extract the content from the result
                         content = result['result'].get('content', [])
-                        if isinstance(content, list):
-                            return '\n'.join([str(item.get('text', item)) for item in content])
-                        return str(content)
-                    elif 'error' in result:
+                        if isinstance(content, list) and len(content) > 0:
+                            # Get text from first content item
+                            text = content[0].get('text', '')
+                            return text
+                        return str(result['result'])
+                    elif result and 'error' in result:
                         return f"Error: {result['error'].get('message', result['error'])}"
-                    return str(result)
+                    return f"No valid result in response"
                 else:
                     return f"HTTP Error {response.status_code}: {response.text[:200]}"
             else:
-                return f"Unsupported session type for {server}"
+                return f"Not connected to {server} MCP server"
             
         except Exception as e:
             return f"Error executing {tool_name} via MCP: {str(e)}"
