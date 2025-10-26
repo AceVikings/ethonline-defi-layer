@@ -451,21 +451,48 @@ function getTokenSymbol(tokenAddressOrSymbol) {
 }
 
 // Node-specific execution functions
-async function executeSwapNode(node, pkpInfo) {
+async function executeSwapNode(node, pkpInfo, previousOutputs = []) {
   const config = node.config || {};
   
   // Validate required configuration
-  if (!config.fromToken || !config.toToken || !config.amount) {
-    throw new Error('Swap node missing required configuration (fromToken, toToken, amount)');
+  if (!config.fromToken || !config.toToken) {
+    throw new Error('Swap node missing required configuration (fromToken, toToken)');
   }
   
   if (!config.chain) {
     throw new Error('Swap node missing chain configuration');
   }
   
+  // Determine amount: use config.amount or pull from previous output
+  let amount = config.amount;
+  
+  if (!amount && previousOutputs.length > 0) {
+    // Try to get amount from the last output that has tokenReceived matching our fromToken
+    const lastOutput = previousOutputs[previousOutputs.length - 1];
+    
+    if (lastOutput?.output?.amountReceived) {
+      amount = lastOutput.output.amountReceived;
+      console.log(`   [Swap] Using amount from previous node: ${amount}`);
+      
+      // Also use the token received as fromToken if it matches
+      if (lastOutput.output.tokenReceived) {
+        const normalizedFromToken = normalizeTokenAddress(config.fromToken, config.chain);
+        const normalizedPrevToken = normalizeTokenAddress(lastOutput.output.tokenReceived, config.chain);
+        
+        if (normalizedFromToken.toLowerCase() === normalizedPrevToken.toLowerCase()) {
+          console.log(`   [Swap] Token match confirmed: ${normalizedFromToken}`);
+        }
+      }
+    }
+  }
+  
+  if (!amount) {
+    throw new Error('Swap node missing amount (not in config and not available from previous outputs)');
+  }
+  
   console.log('   [Swap] Executing Uniswap swap via Vincent SDK...');
   console.log(`   Chain: ${config.chain}`);
-  console.log(`   From: ${config.amount} ${config.fromToken}`);
+  console.log(`   From: ${amount} ${config.fromToken}`);
   console.log(`   To: ${config.toToken}`);
   console.log(`   Slippage: ${config.slippage || 0.5}%`);
   
@@ -499,12 +526,12 @@ async function executeSwapNode(node, pkpInfo) {
     // Wrap if user selected native ETH OR if they selected WETH (which requires wrapping)
     if (isNativeETH || isWETH) {
       console.log(`   → Step 1: Wrapping ETH to WETH...`);
-      console.log(`     Amount: ${config.amount} ETH`);
+      console.log(`     Amount: ${amount} ETH`);
       
       try {
         const wrapResult = await wrapETH({
           chainName: config.chain,
-          amount: config.amount.toString(),
+          amount: amount.toString(),
           userPkpAddress: delegatorPkpEthAddress,
         });
         
@@ -541,7 +568,7 @@ async function executeSwapNode(node, pkpInfo) {
     const signedUniswapQuote = await generateSignedUniswapQuote({
       rpcUrl,
       tokenInAddress: normalizedFromToken,
-      tokenInAmount: config.amount,
+      tokenInAmount: amount,
       tokenOutAddress: normalizedToToken,
       recipient: delegatorPkpEthAddress,
       slippageTolerance: slippageBps,
@@ -560,7 +587,7 @@ async function executeSwapNode(node, pkpInfo) {
     // Assuming 18 decimals for now - in production, fetch from token contract
     const tokenDecimals = config.fromTokenDecimals || 18;
     const tokenAmountWei = ethers.utils.parseUnits(
-      config.amount.toString(), 
+      amount.toString(), 
       tokenDecimals
     ).toString();
     
@@ -646,7 +673,23 @@ async function executeSwapNode(node, pkpInfo) {
     // Calculate actual amount received (amountOut from quote)
     const amountOutWei = signedUniswapQuote.quote.amountOut;
     const toTokenDecimals = config.toTokenDecimals || 18;
-    const amountOut = (BigInt(amountOutWei) / BigInt(10 ** parseInt(toTokenDecimals))).toString();
+    
+    // Handle amountOut conversion safely - could be string, number, or BigInt
+    let amountOut;
+    try {
+      // If it's already a decimal string or number, use it directly
+      if (typeof amountOutWei === 'string' && amountOutWei.includes('.')) {
+        amountOut = amountOutWei;
+      } else if (typeof amountOutWei === 'number') {
+        amountOut = amountOutWei.toString();
+      } else {
+        // Otherwise assume it's wei and convert using ethers
+        amountOut = ethers.formatUnits(amountOutWei.toString(), toTokenDecimals);
+      }
+    } catch (err) {
+      console.warn('   ⚠ Error converting amountOut, using raw value:', err.message);
+      amountOut = amountOutWei.toString();
+    }
     
     return {
       success: true,
@@ -655,7 +698,7 @@ async function executeSwapNode(node, pkpInfo) {
       chainId: getChainId(config.chain),
       fromToken: config.fromToken,
       toToken: config.toToken,
-      amountIn: config.amount,
+      amountIn: amount,
       expectedAmountOut: signedUniswapQuote.quote.amountOut,
       slippage: config.slippage || 0.5,
       wrapTxHash, // null if no wrapping was needed

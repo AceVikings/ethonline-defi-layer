@@ -55,7 +55,6 @@ export function AIWorkflowBuilder({
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [conversation, setConversation] = useState<ConversationMessage[]>([]);
-  const [currentExplanation, setCurrentExplanation] = useState("");
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -89,7 +88,6 @@ export function AIWorkflowBuilder({
         ];
 
         setConversation(newConversation);
-        setCurrentExplanation(result.explanation || "");
         setPrompt("");
 
         showToast.success(
@@ -121,13 +119,11 @@ export function AIWorkflowBuilder({
   const handleClose = () => {
     setPrompt("");
     setConversation([]);
-    setCurrentExplanation("");
     onClose();
   };
 
   const handleStartOver = () => {
     setConversation([]);
-    setCurrentExplanation("");
     setPrompt("");
   };
 

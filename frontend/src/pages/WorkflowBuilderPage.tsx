@@ -26,27 +26,6 @@ import { WorkflowCreationModal } from "../components/WorkflowCreationModal";
 import { useNotification } from "@blockscout/app-sdk";
 
 // Utility function to detect and show transaction notifications
-const detectAndShowTransactions = (
-  text: string,
-  openTxToast: (chainId: string, txHash: string) => Promise<void>,
-  chainId: string = "8453" // Default to Base
-) => {
-  // Regex to match Ethereum transaction hashes (0x followed by 64 hex characters)
-  const txHashRegex = /0x[a-fA-F0-9]{64}/g;
-  const matches = text.match(txHashRegex);
-  
-  if (matches && matches.length > 0) {
-    // Show notification for each unique transaction hash
-    const uniqueHashes = [...new Set(matches)];
-    uniqueHashes.forEach((txHash) => {
-      console.log(`📨 Showing notification for transaction: ${txHash} on chain ${chainId}`);
-      openTxToast(chainId, txHash).catch((err) => {
-        console.error('Failed to show transaction toast:', err);
-      });
-    });
-  }
-};
-
 // Custom node component with dynamic handles based on node type
 const CustomNode = ({ data }: any) => {
   const nodeType =
@@ -54,7 +33,6 @@ const CustomNode = ({ data }: any) => {
   const isTrigger = data.type === "trigger";
   const isCondition = data.type === "condition";
   const isMCP = data.type === "mcp";
-  const isAI = data.type === "ai";
 
   return (
     <div
@@ -194,10 +172,12 @@ const TriggerConfig = ({
   config,
   onUpdate,
   workflowId,
+  openTxToast,
 }: {
   config: any;
   onUpdate: (config: any) => void;
   workflowId?: string;
+  openTxToast: (chainId: string, txHash: string) => Promise<void>;
 }) => {
   const [triggering, setTriggering] = useState(false);
   const [executionId, setExecutionId] = useState<string | null>(null);
@@ -224,6 +204,32 @@ const TriggerConfig = ({
 
           if (response.execution.status === "completed") {
             showToast.success("Workflow execution completed!");
+            
+            // Extract and show transaction notifications
+            if (response.execution.steps && response.execution.steps.length > 0) {
+              response.execution.steps.forEach((step: any) => {
+                // Check if step has a txHash (in output.txHash or output.swapTxHash)
+                const txHash = step.output?.txHash || step.output?.swapTxHash;
+                const chainId = step.output?.chainId?.toString();
+                
+                if (txHash && chainId) {
+                  openTxToast(chainId, txHash).catch((err) => {
+                    console.error('Failed to show transaction notification:', err);
+                  });
+                }
+                
+                // Also check for transactions array (for nodes with multiple txs)
+                if (step.output?.transactions && Array.isArray(step.output.transactions)) {
+                  step.output.transactions.forEach((tx: any) => {
+                    if (tx.hash && tx.chainId) {
+                      openTxToast(tx.chainId.toString(), tx.hash).catch((err) => {
+                        console.error('Failed to show transaction notification:', err);
+                      });
+                    }
+                  });
+                }
+              });
+            }
           } else {
             showToast.error("Workflow execution failed");
           }
@@ -234,7 +240,7 @@ const TriggerConfig = ({
     }, 1000); // Poll every second
 
     return () => clearInterval(pollInterval);
-  }, [executionId, triggering]);
+  }, [executionId, triggering, openTxToast]);
 
   const handleManualTrigger = async () => {
     if (!workflowId) {
@@ -1415,11 +1421,13 @@ const NodeConfigPanel = ({
   config,
   onUpdate,
   workflowId,
+  openTxToast,
 }: {
   nodeType: string;
   config: any;
   onUpdate: (config: any) => void;
   workflowId?: string;
+  openTxToast: (chainId: string, txHash: string) => Promise<void>;
 }) => {
   switch (nodeType) {
     case "trigger":
@@ -1428,6 +1436,7 @@ const NodeConfigPanel = ({
           config={config}
           onUpdate={onUpdate}
           workflowId={workflowId}
+          openTxToast={openTxToast}
         />
       );
     case "swap":
@@ -2139,6 +2148,7 @@ export default function WorkflowBuilderPage() {
                       updateNodeConfig(selectedNode.id, newConfig)
                     }
                     workflowId={id !== "new" ? id : undefined}
+                    openTxToast={openTxToast}
                   />
                 </div>
 
