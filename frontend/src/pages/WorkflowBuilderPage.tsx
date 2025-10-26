@@ -201,14 +201,7 @@ const NODE_TYPES = [
     label: "ASI:One",
     icon: "ai",
     color: "from-indigo-400 to-indigo-600",
-    description: "ASI:One AI analysis and insights",
-  },
-  {
-    type: "mcp",
-    label: "MCP Tool",
-    icon: "mcp",
-    color: "from-cyan-400 to-cyan-600",
-    description: "Model Context Protocol integration",
+    description: "ASI:One AI with agent connections",
   },
 ];
 
@@ -1287,6 +1280,34 @@ const AIConfig = ({
   config: any;
   onUpdate: (config: any) => void;
 }) => {
+  // Preset agents
+  const PRESET_AGENTS = [
+    {
+      name: "None",
+      address: "",
+      description: "No agent connection"
+    },
+    {
+      name: "Blockscout MCP Agent",
+      address: "agent1qfwanzm7l94lcd57p9zsl25y4p6clssp8xjjrd0f8f6nc9r3rx8h6978x2r",
+      description: "Real-time blockchain data (balances, transactions, NFTs)"
+    },
+    {
+      name: "DeFi Workflow Builder",
+      address: "agent1qv5658stegsd5azsaluh5eel6mp8meafkw3egsren6sc3m2nnujtgwtgdwx",
+      description: "AI workflow generation and DeFi strategy advice"
+    },
+    {
+      name: "Custom",
+      address: "custom",
+      description: "Enter custom agent address"
+    }
+  ];
+
+  const selectedPreset = PRESET_AGENTS.find(a => a.address === config.agentAddress) 
+    || (config.agentAddress ? PRESET_AGENTS[3] : PRESET_AGENTS[0]);
+  const isCustom = selectedPreset.address === "custom";
+
   return (
     <div className="space-y-3">
       <div>
@@ -1355,109 +1376,56 @@ const AIConfig = ({
 
       <div>
         <label className="block text-xs font-semibold text-gray-700 mb-2">
-          Agent Address (Optional)
-          <span className="ml-2 text-gray-500 font-normal">(Connect to Agentverse agent)</span>
-        </label>
-        <input
-          type="text"
-          value={config.agentAddress || ""}
-          onChange={(e) =>
-            onUpdate({ ...config, agentAddress: e.target.value })
-          }
-          placeholder="agent1qf... (e.g., Blockscout agent)"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 focus:outline-none font-mono"
-        />
-        <p className="mt-1 text-xs text-gray-500">
-          Connect to an Agentverse agent to access its capabilities (e.g., blockchain data from Blockscout)
-        </p>
-      </div>
-
-      <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
-        <p className="text-xs text-indigo-800">
-          💡 ASI:One will analyze outputs from previous nodes automatically. Add an agent address to access real-time data.
-        </p>
-      </div>
-    </div>
-  );
-};
-
-const MCPConfig = ({
-  config,
-  onUpdate,
-}: {
-  config: any;
-  onUpdate: (config: any) => void;
-}) => {
-  const mcpServers = [
-    { value: "blockscout", label: "Blockscout (Blockchain Explorer)", description: "Query blockchain data, transactions, and token information" },
-    // Future MCP servers can be added here
-  ];
-
-  const selectedServer = mcpServers.find((s) => s.value === config.mcpServer);
-
-  return (
-    <div className="space-y-3">
-      <div>
-        <label className="block text-xs font-semibold text-gray-700 mb-2">
-          MCP Server
+          Connect to Agent
+          <span className="ml-2 text-gray-500 font-normal">(Optional)</span>
         </label>
         <select
-          value={config.mcpServer || ""}
-          onChange={(e) =>
-            onUpdate({
-              ...config,
-              mcpServer: e.target.value,
-            })
-          }
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-cyan-500 focus:outline-none"
+          value={selectedPreset.address}
+          onChange={(e) => {
+            const selected = PRESET_AGENTS.find(a => a.address === e.target.value);
+            if (selected && selected.address !== "custom") {
+              onUpdate({ ...config, agentAddress: selected.address });
+            } else {
+              onUpdate({ ...config, agentAddress: "" });
+            }
+          }}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 focus:outline-none"
         >
-          <option value="">Select MCP Server...</option>
-          {mcpServers.map((server) => (
-            <option key={server.value} value={server.value}>
-              {server.label}
+          {PRESET_AGENTS.map((agent) => (
+            <option key={agent.address} value={agent.address}>
+              {agent.name}
             </option>
           ))}
         </select>
-        {selectedServer && (
-          <p className="text-xs text-gray-600 mt-1">
-            {selectedServer.description}
+        {selectedPreset.description && (
+          <p className="mt-1 text-xs text-gray-500">
+            {selectedPreset.description}
           </p>
         )}
       </div>
 
-      {config.mcpServer && (
-        <>
-          <div className="p-3 bg-cyan-50 border-2 border-cyan-200 rounded-lg">
-            <div className="flex items-start gap-2">
-              <svg className="w-4 h-4 text-cyan-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div className="flex-1">
-                <p className="text-xs font-semibold text-cyan-900 mb-1">
-                  Auto-Configuration
-                </p>
-                <p className="text-xs text-cyan-800 leading-relaxed">
-                  When connected to an AI node, the AI will automatically select and use the appropriate tools from this MCP server based on the query.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-3 bg-blue-50 border-2 border-blue-200 rounded-lg">
-            <p className="text-xs font-semibold text-blue-900 mb-2">
-              Connection Instructions
-            </p>
-            <div className="flex items-start gap-2">
-              <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              <p className="text-xs text-blue-800 leading-relaxed">
-                Connect this MCP node's right output (cyan) to an AI node's left MCP input (cyan). The AI will intelligently use MCP tools to answer queries.
-              </p>
-            </div>
-          </div>
-        </>
+      {isCustom && (
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-2">
+            Custom Agent Address
+          </label>
+          <input
+            type="text"
+            value={config.agentAddress || ""}
+            onChange={(e) =>
+              onUpdate({ ...config, agentAddress: e.target.value })
+            }
+            placeholder="agent1qf..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 focus:outline-none font-mono"
+          />
+        </div>
       )}
+
+      <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+        <p className="text-xs text-indigo-800">
+          💡 Connect to Agentverse agents to access real-time blockchain data, DeFi strategies, and more capabilities.
+        </p>
+      </div>
     </div>
   );
 };
@@ -1493,8 +1461,6 @@ const NodeConfigPanel = ({
       return <ConditionConfig config={config} onUpdate={onUpdate} />;
     case "ai":
       return <AIConfig config={config} onUpdate={onUpdate} />;
-    case "mcp":
-      return <MCPConfig config={config} onUpdate={onUpdate} />;
     default:
       return (
         <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600 text-center">
