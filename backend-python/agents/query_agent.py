@@ -6,21 +6,8 @@ It runs locally with an HTTP endpoint and can receive requests from the Flask se
 """
 
 import os
-from typing import Dict
-from uagents import Agent, Context, Model
-
-# Message models - must match Blockscout agent's models
-class BlockchainQuery(Model):
-    """Query model for blockchain data requests"""
-    query: str
-    chain_id: str = "8453"  # Default to Base mainnet
-    address: str = ""
-
-class BlockchainResponse(Model):
-    """Response model from blockchain queries"""
-    success: bool
-    data: Dict = {}
-    error: str = ""
+from uagents import Agent, Context
+from models import BlockchainQuery, BlockchainResponse
 
 # Agent addresses
 BLOCKSCOUT_AGENT_ADDRESS = os.getenv(

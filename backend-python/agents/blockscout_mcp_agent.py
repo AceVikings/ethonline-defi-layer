@@ -13,7 +13,7 @@ Features:
 import os
 import sys
 from pathlib import Path
-from uagents import Agent, Context, Model
+from uagents import Agent, Context
 from uagents.setup import fund_agent_if_low
 import json
 from dotenv import load_dotenv
@@ -22,20 +22,10 @@ import requests
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
 
+# Import shared message models
+from agents.models import BlockchainQuery, BlockchainResponse
+
 load_dotenv()
-
-# Define message models
-class BlockchainQuery(Model):
-    """Query for blockchain data"""
-    query: str
-    chain_id: str = "8453"  # Base mainnet default
-    address: str = ""
-
-class BlockchainResponse(Model):
-    """Response with blockchain data"""
-    success: bool
-    data: dict = {}
-    error: str = ""
 
 # Blockscout MCP configuration
 BLOCKSCOUT_MCP_URL = "https://mcp.blockscout.com/mcp"
