@@ -997,10 +997,13 @@ async function executeTransferNode(node, pkpInfo, previousOutputs = []) {
   const startTime = Date.now();
   const config = node.config || {};
 
+  // Support both 'recipient' and 'to' field names (AI workflow builder uses 'to')
+  const recipient = config.recipient || config.to;
+  
   console.log('   [Transfer] Executing token transfer...');
   console.log(`   Chain: ${config.chain || 'Not specified'}`);
   console.log(`   Token: ${config.token || 'Not specified'}`);
-  console.log(`   To: ${config.recipient || 'Not specified'}`);
+  console.log(`   To: ${recipient || 'Not specified'}`);
   console.log(`   Config amount: ${config.amount || 'Not specified'}`);
 
   // Validate required fields (except amount - we'll try to auto-fill from previous outputs)
@@ -1010,8 +1013,8 @@ async function executeTransferNode(node, pkpInfo, previousOutputs = []) {
   if (!config.token) {
     throw new Error('Transfer node missing required configuration: token');
   }
-  if (!config.recipient) {
-    throw new Error('Transfer node missing required configuration: recipient');
+  if (!recipient) {
+    throw new Error('Transfer node missing required configuration: recipient or to');
   }
 
   // Determine amount: prefer config.amount but fall back to previous node outputs
@@ -1052,8 +1055,8 @@ async function executeTransferNode(node, pkpInfo, previousOutputs = []) {
   }
 
   // Validate recipient address format
-  if (!ethers.utils.isAddress(config.recipient)) {
-    throw new Error(`Invalid recipient address: ${config.recipient}`);
+  if (!ethers.utils.isAddress(recipient)) {
+    throw new Error(`Invalid recipient address: ${recipient}`);
   }
 
   // Get PKP address
@@ -1072,7 +1075,7 @@ async function executeTransferNode(node, pkpInfo, previousOutputs = []) {
       
       transferResult = await transferNativeToken({
         chainName: config.chain,
-        recipient: config.recipient,
+        recipient: recipient,
         amount: amount.toString(),
         userPkpAddress: delegatorPkpEthAddress,
       });
@@ -1084,7 +1087,7 @@ async function executeTransferNode(node, pkpInfo, previousOutputs = []) {
       transferResult = await transferERC20Token({
         chainName: config.chain,
         tokenAddress: config.token,
-        recipient: config.recipient,
+        recipient: recipient,
         amount: amount.toString(),
         userPkpAddress: delegatorPkpEthAddress,
       });
@@ -1105,7 +1108,7 @@ async function executeTransferNode(node, pkpInfo, previousOutputs = []) {
       chain: config.chain,
       chainId: getChainId(config.chain),
       txHash: transferResult.txHash,
-      recipient: config.recipient,
+      recipient: recipient,
       amount: amount,
       token: transferResult.token || config.token,
       blockNumber: transferResult.blockNumber,

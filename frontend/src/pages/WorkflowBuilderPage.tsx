@@ -1182,8 +1182,8 @@ const TransferConfig = ({
         </label>
         <input
           type="text"
-          value={config.recipient || ""}
-          onChange={(e) => onUpdate({ ...config, recipient: e.target.value })}
+          value={config.recipient || config.to || ""}
+          onChange={(e) => onUpdate({ ...config, recipient: e.target.value, to: e.target.value })}
           placeholder="0x..."
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none font-mono"
         />
