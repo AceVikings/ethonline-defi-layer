@@ -425,6 +425,17 @@ Respond with ONLY valid JSON, no markdown code blocks, no explanations."""
                 chains = list(context['token_addresses'].keys())
                 print(f"🌐 [ASI Client v{CLIENT_VERSION}] Available chains: {', '.join(chains[:5])}", flush=True)
             
+            # Debug: Print portion of prompt with token mappings
+            if "BASESEPOLIA" in prompt:
+                print(f"✅ [ASI] Prompt includes BASESEPOLIA token mappings", flush=True)
+                # Find and print the USDC line for basesepolia
+                for line in prompt.split('\n'):
+                    if 'basesepolia' in line.lower() and 'usdc' in line.lower():
+                        print(f"   📍 {line.strip()}", flush=True)
+                        break
+            else:
+                print(f"❌ [ASI] WARNING: Prompt missing BASESEPOLIA token mappings!", flush=True)
+            
             response = requests.post(
                 f"{self.base_url}/chat/completions",
                 headers=self.headers,
