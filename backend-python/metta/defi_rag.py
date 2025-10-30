@@ -130,6 +130,9 @@ class DeFiWorkflowRAG:
         query_str = '!(match &self (strategy $name $desc $sequence) ($name $desc $sequence))'
         results = self.metta.run(query_str)
         
+        print(f"[RAG DEBUG] query_all_strategies raw results: {results}")
+        print(f"[RAG DEBUG] results type: {type(results)}, len: {len(results) if results else 0}")
+        
         # MeTTa returns format: [[(name "desc"), (name "desc"), ...]]
         # Each item is an Atom-like object with string representation like: (maximize_yield_usdc "trigger -> swap_to_usdc -> aave_supply")
         strategies = []
