@@ -160,6 +160,15 @@ FIELD NAMING REQUIREMENTS:
 - Transfer nodes MUST use: "token" (address), "to" (address), "amount", "chain"
 - DO NOT use "tokenIn" or "tokenOut" - use "fromToken" and "toToken" instead
 
+AMOUNT FIELD REQUIREMENTS:
+- If a node (swap, aave, transfer) comes AFTER another node that produces an output amount, leave the "amount" field as an empty string ""
+- The backend will automatically infer the amount from the previous node's output
+- ONLY set a specific amount value if the user explicitly specifies an amount AND it's the first operation in the chain
+- Examples:
+  * "swap 100 USDC to ETH then transfer to 0x123..." -> swap amount: "100", transfer amount: "" (inferred from swap output)
+  * "swap ETH to USDC then supply to Aave" -> swap amount: "", aave amount: "" (both inferred from user's wallet/previous outputs)
+  * "transfer all my USDC to 0x123..." -> transfer amount: "" (inferred from wallet balance)
+
 TOKEN ADDRESS MAPPINGS (Base network):
 - ETH: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
 - USDC: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
