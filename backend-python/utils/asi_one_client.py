@@ -160,6 +160,12 @@ FIELD NAMING REQUIREMENTS:
 - Transfer nodes MUST use: "token" (address), "to" (address), "amount", "chain"
 - DO NOT use "tokenIn" or "tokenOut" - use "fromToken" and "toToken" instead
 
+SUPPORTED CHAIN NAMES (use exact strings, no hyphens or underscores):
+Mainnets: "ethereum", "polygon", "arbitrum", "optimism", "base", "bnb", "avalanche", "celo"
+Testnets: "sepolia", "basesepolia", "arbitrumsepolia", "optimismsepolia", "avalanchefuji", "polygonmumbai"
+- ALWAYS use lowercase, no hyphens (e.g., "basesepolia" NOT "base-sepolia")
+- Default to "basesepolia" for test transactions unless user specifies otherwise
+
 AMOUNT FIELD REQUIREMENTS:
 - If a node (swap, aave, transfer) comes AFTER another node that produces an output amount, leave the "amount" field as an empty string ""
 - The backend will automatically infer the amount from the previous node's output
@@ -214,7 +220,7 @@ Example valid workflow:
           "fromTokenDecimals": "18",
           "amount": "",
           "slippage": "0.5",
-          "chain": "base"
+          "chain": "basesepolia"
         }}
       }},
       "position": {{"x": 350, "y": 100}}
