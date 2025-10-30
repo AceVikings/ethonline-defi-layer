@@ -367,7 +367,7 @@ def initialize_defi_knowledge(metta: MeTTa):
     
     print("[MeTTa] ✓ Knowledge graph initialized successfully!")
     print(f"[MeTTa] - {len(node_types)} node types")
-    print(f"[MeTTa] - {len(tokens)} tokens")
+    print(f"[MeTTa] - {len(token_addresses)} token addresses across chains")
     print(f"[MeTTa] - {len(chains)} blockchain networks")
     print(f"[MeTTa] - {len(strategies)} strategies")
     print(f"[MeTTa] - {len(operations)} operations")
