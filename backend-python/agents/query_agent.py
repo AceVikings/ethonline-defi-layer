@@ -22,13 +22,6 @@ class BlockchainResponse(Model):
     data: Dict = {}
     error: str = ""
 
-class QueryRequest(Model):
-    """Request model from Flask server to trigger a query"""
-    target_agent: str  # Address of the agent to query
-    query: str
-    chain_id: str = "8453"
-    address: str = ""
-
 # Agent addresses
 BLOCKSCOUT_AGENT_ADDRESS = os.getenv(
     "BLOCKSCOUT_AGENT_ADDRESS",
@@ -88,39 +81,6 @@ async def handle_blockchain_response(ctx: Context, sender: str, msg: BlockchainR
     
     ctx.logger.info("Response processed successfully!")
 
-@query_agent.on_rest("/query", method="POST")
-async def handle_rest_query(ctx: Context, request_data: QueryRequest) -> Dict:
-    """
-    REST endpoint for Flask server to trigger queries
-    
-    POST /query
-    {
-        "target_agent": "agent1qf...",
-        "query": "What tools do you have?",
-        "chain_id": "8453",
-        "address": ""
-    }
-    """
-    ctx.logger.info(f"🌐 REST query received for agent: {request_data.target_agent}")
-    ctx.logger.info(f"   Query: {request_data.query}")
-    
-    # Send the query to the target agent
-    await ctx.send(
-        request_data.target_agent,
-        BlockchainQuery(
-            query=request_data.query,
-            chain_id=request_data.chain_id,
-            address=request_data.address
-        )
-    )
-    
-    return {
-        "success": True,
-        "message": "Query sent to agent",
-        "target": request_data.target_agent,
-        "note": "Response will be logged when received (async)"
-    }
-
 # Main entry point for testing
 if __name__ == "__main__":
     print("🤖 Starting DeFi Query Agent...")
@@ -130,7 +90,6 @@ if __name__ == "__main__":
     print(f"   Target Blockscout Agent: {BLOCKSCOUT_AGENT_ADDRESS}")
     print()
     print("📡 Will send test query every 60 seconds")
-    print("🌐 REST endpoint: POST http://127.0.0.1:{QUERY_AGENT_PORT}/query")
     print()
     print("Ready to communicate with mailbox agents!")
     
