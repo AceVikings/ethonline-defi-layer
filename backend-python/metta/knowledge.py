@@ -19,6 +19,8 @@ Knowledge Structure:
 
 from hyperon import MeTTa, E, S, ValueAtom
 
+print("[KNOWLEDGE.PY] ========== MODULE LOADED FROM CORRECT FILE (400 LINES) ==========", flush=True)
+
 
 def get_metta_instance():
     """Initialize and return a MeTTa instance with DeFi knowledge."""
