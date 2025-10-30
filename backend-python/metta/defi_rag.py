@@ -243,6 +243,91 @@ class DeFiWorkflowRAG:
         results = self.metta.run(query_str)
         return results
     
+    def get_token_address(self, chain: str, symbol: str) -> Optional[Dict[str, str]]:
+        """
+        Get token address for a specific chain and symbol.
+        
+        Args:
+            chain: Chain name (e.g., "basesepolia", "ethereum")
+            symbol: Token symbol (e.g., "USDC", "ETH")
+            
+        Returns:
+            Dictionary with token details including address, or None if not found
+        """
+        query_str = f'!(match &self (token-address {chain} {symbol} $name $address $decimals) ($name $address $decimals))'
+        results = self.metta.run(query_str)
+        
+        if results and len(results) > 0 and len(results[0]) > 0:
+            result = results[0]
+            if isinstance(result, list) and len(result) >= 3:
+                return {
+                    "chain": chain,
+                    "symbol": symbol,
+                    "name": str(result[0]).strip('"'),
+                    "address": str(result[1]).strip('"'),
+                    "decimals": str(result[2]).strip('"')
+                }
+        
+        return None
+    
+    def get_all_tokens_for_chain(self, chain: str) -> List[Dict[str, str]]:
+        """
+        Get all tokens available on a specific chain.
+        
+        Args:
+            chain: Chain name (e.g., "basesepolia", "ethereum")
+            
+        Returns:
+            List of token dictionaries with symbol, name, address, decimals
+        """
+        query_str = f'!(match &self (token-address {chain} $symbol $name $address $decimals) ($symbol $name $address $decimals))'
+        results = self.metta.run(query_str)
+        
+        tokens = []
+        if results and len(results) > 0:
+            for result_set in results:
+                if isinstance(result_set, list):
+                    for item in result_set:
+                        if isinstance(item, list) and len(item) >= 4:
+                            tokens.append({
+                                "symbol": str(item[0]).strip('"'),
+                                "name": str(item[1]).strip('"'),
+                                "address": str(item[2]).strip('"'),
+                                "decimals": str(item[3]).strip('"')
+                            })
+        
+        return tokens
+    
+    def get_all_token_addresses(self) -> Dict[str, List[Dict[str, str]]]:
+        """
+        Get all token addresses grouped by chain.
+        
+        Returns:
+            Dictionary mapping chain name to list of token dictionaries
+        """
+        query_str = '!(match &self (token-address $chain $symbol $name $address $decimals) ($chain $symbol $name $address $decimals))'
+        results = self.metta.run(query_str)
+        
+        # Group by chain
+        token_map = {}
+        if results and len(results) > 0:
+            for result_set in results:
+                if isinstance(result_set, list):
+                    for item in result_set:
+                        if isinstance(item, list) and len(item) >= 5:
+                            chain = str(item[0]).strip('"')
+                            if chain not in token_map:
+                                token_map[chain] = []
+                            
+                            token_map[chain].append({
+                                "symbol": str(item[1]).strip('"'),
+                                "name": str(item[2]).strip('"'),
+                                "address": str(item[3]).strip('"'),
+                                "decimals": str(item[4]).strip('"')
+                            })
+        
+        return token_map
+    
     def get_all_tokens(self) -> List[Dict[str, str]]:
         """
         Get all supported tokens.

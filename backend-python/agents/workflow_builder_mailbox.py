@@ -143,11 +143,12 @@ async def handle_workflow_request(ctx: Context, sender: str, msg: WorkflowReques
         if not workflow_json:
             ctx.logger.info("🤖 Using ASI:One to generate workflow...")
             
-            # Provide context from knowledge graph
+            # Provide context from knowledge graph including token addresses
             context = {
                 "strategies": rag.query_all_strategies(),
                 "protocols": rag.query_protocols(),
-                "node_types": ["trigger", "swap", "aave", "transfer", "condition", "ai", "mcp"]
+                "node_types": ["trigger", "swap", "aave", "transfer", "condition", "ai", "mcp"],
+                "token_addresses": rag.get_all_token_addresses()
             }
             
             workflow_json = asi_client.generate_workflow_from_intent(msg.user_query, context)

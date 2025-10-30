@@ -140,28 +140,112 @@ def initialize_defi_knowledge(metta: MeTTa):
     metta.space().add_atom(E(S("mcp-output"), S("mcp-output"), ValueAtom("Connect to AI node for tool access")))
     
     # ============================================
-    # 3. DEFINE TOKENS
+    # 3. DEFINE TOKENS WITH NETWORK-SPECIFIC ADDRESSES
     # ============================================
-    print("[MeTTa] Adding token definitions...")
+    print("[MeTTa] Adding token definitions with network addresses...")
     
-    # Common tokens: (token <symbol> <name> <decimals>)
-    tokens = [
-        ("ETH", "Ethereum", "18"),
-        ("WETH", "Wrapped Ethereum", "18"),
-        ("USDC", "USD Coin", "6"),
-        ("USDT", "Tether USD", "6"),
-        ("DAI", "Dai Stablecoin", "18"),
-        ("WBTC", "Wrapped Bitcoin", "8"),
-        ("UNI", "Uniswap", "18"),
-        ("AAVE", "Aave Token", "18"),
-        ("LINK", "Chainlink", "18"),
+    # Token addresses per network: (token-address <chain> <symbol> <address> <decimals>)
+    # Format: chain, symbol, name, address, decimals
+    
+    token_addresses = [
+        # Base Mainnet
+        ("base", "ETH", "Ethereum", "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", "18"),
+        ("base", "WETH", "Wrapped Ether", "0x4200000000000000000000000000000000000006", "18"),
+        ("base", "USDC", "USD Coin", "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "6"),
+        ("base", "USDbC", "USD Base Coin", "0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA", "6"),
+        ("base", "DAI", "Dai Stablecoin", "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb", "18"),
+        ("base", "cbBTC", "Coinbase Wrapped BTC", "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf", "8"),
+        
+        # Ethereum Mainnet
+        ("ethereum", "ETH", "Ethereum", "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", "18"),
+        ("ethereum", "WETH", "Wrapped Ether", "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "18"),
+        ("ethereum", "USDC", "USD Coin", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "6"),
+        ("ethereum", "USDT", "Tether USD", "0xdAC17F958D2ee523a2206206994597C13D831ec7", "6"),
+        ("ethereum", "DAI", "Dai Stablecoin", "0x6B175474E89094C44Da98b954EedeAC495271d0F", "18"),
+        ("ethereum", "WBTC", "Wrapped BTC", "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", "8"),
+        
+        # Polygon Mainnet
+        ("polygon", "MATIC", "Polygon", "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", "18"),
+        ("polygon", "WMATIC", "Wrapped Matic", "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", "18"),
+        ("polygon", "USDC", "USD Coin", "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", "6"),
+        ("polygon", "USDT", "Tether USD", "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", "6"),
+        ("polygon", "DAI", "Dai Stablecoin", "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063", "18"),
+        ("polygon", "WETH", "Wrapped Ether", "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619", "18"),
+        
+        # Arbitrum Mainnet
+        ("arbitrum", "ETH", "Ethereum", "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", "18"),
+        ("arbitrum", "WETH", "Wrapped Ether", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "18"),
+        ("arbitrum", "USDC", "USD Coin", "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", "6"),
+        ("arbitrum", "USDT", "Tether USD", "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", "6"),
+        ("arbitrum", "DAI", "Dai Stablecoin", "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1", "18"),
+        ("arbitrum", "ARB", "Arbitrum", "0x912CE59144191C1204E64559FE8253a0e49E6548", "18"),
+        
+        # Optimism Mainnet
+        ("optimism", "ETH", "Ethereum", "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", "18"),
+        ("optimism", "WETH", "Wrapped Ether", "0x4200000000000000000000000000000000000006", "18"),
+        ("optimism", "USDC", "USD Coin", "0x7F5c764cBc14f9669B88837ca1490cCa17c31607", "6"),
+        ("optimism", "USDT", "Tether USD", "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58", "6"),
+        ("optimism", "DAI", "Dai Stablecoin", "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1", "18"),
+        ("optimism", "OP", "Optimism", "0x4200000000000000000000000000000000000042", "18"),
+        
+        # Avalanche Mainnet
+        ("avalanche", "AVAX", "Avalanche", "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", "18"),
+        ("avalanche", "WAVAX", "Wrapped AVAX", "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7", "18"),
+        ("avalanche", "USDC", "USD Coin", "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E", "6"),
+        ("avalanche", "USDT", "Tether USD", "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7", "6"),
+        ("avalanche", "DAI", "Dai Stablecoin", "0xd586E7F844cEa2F87f50152665BCbc2C279D8d70", "18"),
+        ("avalanche", "WETH", "Wrapped Ether", "0x49D5c2BdFfac6CE2BFdB6640F4F80f226bc10bAB", "18"),
+        
+        # BNB Chain Mainnet
+        ("bnb", "BNB", "BNB", "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", "18"),
+        ("bnb", "WBNB", "Wrapped BNB", "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c", "18"),
+        ("bnb", "USDC", "USD Coin", "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", "18"),
+        ("bnb", "USDT", "Tether USD", "0x55d398326f99059fF775485246999027B3197955", "18"),
+        ("bnb", "BUSD", "Binance USD", "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56", "18"),
+        ("bnb", "ETH", "Ethereum", "0x2170Ed0880ac9A755fd29B2688956BD959F933F8", "18"),
+        
+        # Celo Mainnet
+        ("celo", "CELO", "Celo", "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", "18"),
+        ("celo", "cUSD", "Celo Dollar", "0x765DE816845861e75A25fCA122bb6898B8B1282a", "18"),
+        ("celo", "cEUR", "Celo Euro", "0xD8763CBa276a3738E6DE85b4b3bF5FDed6D6cA73", "18"),
+        ("celo", "USDC", "USD Coin", "0xcebA9300f2b948710d2653dD7B07f33A8B32118C", "6"),
+        ("celo", "WETH", "Wrapped Ether", "0x66803FB87aBd4aaC3cbB3fAd7C3aa01f6F3FB207", "18"),
+        
+        # Sepolia Testnet
+        ("sepolia", "ETH", "Ethereum", "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", "18"),
+        ("sepolia", "WETH", "Wrapped Ether", "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14", "18"),
+        ("sepolia", "USDC", "USD Coin", "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", "6"),
+        ("sepolia", "DAI", "Dai Stablecoin", "0xFF34B3d4Aee8ddCd6F9AFFFB6Fe49bD371b8a357", "18"),
+        
+        # Base Sepolia Testnet
+        ("basesepolia", "ETH", "Ethereum", "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", "18"),
+        ("basesepolia", "WETH", "Wrapped Ether", "0x4200000000000000000000000000000000000006", "18"),
+        ("basesepolia", "USDC", "USD Coin", "0x036CbD53842c5426634e7929541eC2318f3dCF7e", "6"),
+        
+        # Arbitrum Sepolia
+        ("arbitrumsepolia", "ETH", "Ethereum", "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", "18"),
+        ("arbitrumsepolia", "WETH", "Wrapped Ether", "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73", "18"),
+        
+        # Optimism Sepolia
+        ("optimismsepolia", "ETH", "Ethereum", "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", "18"),
+        ("optimismsepolia", "WETH", "Wrapped Ether", "0x4200000000000000000000000000000000000006", "18"),
+        
+        # Avalanche Fuji Testnet
+        ("avalanchefuji", "AVAX", "Avalanche", "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", "18"),
+        ("avalanchefuji", "WAVAX", "Wrapped AVAX", "0xd00ae08403B9bbb9124bB305C09058E32C39A48c", "18"),
+        
+        # Polygon Mumbai Testnet
+        ("polygonmumbai", "MATIC", "Polygon", "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", "18"),
+        ("polygonmumbai", "WMATIC", "Wrapped Matic", "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889", "18"),
     ]
     
-    for symbol, name, decimals in tokens:
+    for chain, symbol, name, address, decimals in token_addresses:
         metta.space().add_atom(E(
-            S("token"),
+            S("token-address"),
+            S(chain),
             S(symbol),
             ValueAtom(name),
+            ValueAtom(address),
             ValueAtom(decimals)
         ))
     

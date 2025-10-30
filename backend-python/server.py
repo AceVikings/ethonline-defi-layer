@@ -148,10 +148,16 @@ def generate_workflow():
         strategy_used = ""
         
         try:
-            asi_result = asi_client.generate_workflow_from_intent(user_query, {
+            # Build context from RAG including token addresses
+            context = {
                 'intent': intent,
-                'keyword': keyword
-            })
+                'keyword': keyword,
+                'strategies': rag.query_all_strategies(),
+                'protocols': rag.query_protocols(),
+                'token_addresses': rag.get_all_token_addresses()
+            }
+            
+            asi_result = asi_client.generate_workflow_from_intent(user_query, context)
             
             if asi_result and asi_result.get('nodes'):
                 workflow_json = asi_result

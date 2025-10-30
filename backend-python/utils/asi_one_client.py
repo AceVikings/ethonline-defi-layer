@@ -120,7 +120,7 @@ KEYWORD: <extracted_keyword>"""
         
         Args:
             user_query: User's workflow description
-            context: Context from MeTTa knowledge graph (node types, strategies, etc.)
+            context: Context from MeTTa knowledge graph (node types, strategies, token addresses, etc.)
             
         Returns:
             Workflow JSON structure
@@ -141,6 +141,23 @@ KEYWORD: <extracted_keyword>"""
             examples_desc = "\nExample workflows:\n"
             for strat in context["strategies"][:3]:  # Show first 3
                 examples_desc += f"- {strat['description']}: {strat['sequence']}\n"
+        
+        # Build token address mappings from context
+        token_mappings = ""
+        if context and "token_addresses" in context:
+            token_mappings = "\nTOKEN ADDRESS MAPPINGS BY NETWORK:\n"
+            for chain, tokens in context["token_addresses"].items():
+                token_mappings += f"\n{chain.upper()}:\n"
+                for token in tokens[:6]:  # Show top 6 tokens per chain
+                    token_mappings += f"- {token['symbol']}: {token['address']} (decimals: {token['decimals']})\n"
+        else:
+            # Fallback to Base Sepolia tokens
+            token_mappings = """
+TOKEN ADDRESS MAPPINGS (Base Sepolia - default testnet):
+- ETH: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
+- USDC: 0x036CbD53842c5426634e7929541eC2318f3dCF7e
+- WETH: 0x4200000000000000000000000000000000000006
+"""
         
         prompt = f"""Create a DeFi workflow based on this request: "{user_query}"
 
@@ -175,9 +192,7 @@ AMOUNT FIELD REQUIREMENTS:
   * "swap ETH to USDC then supply to Aave" -> swap amount: "", aave amount: "" (both inferred from user's wallet/previous outputs)
   * "transfer all my USDC to 0x123..." -> transfer amount: "" (inferred from wallet balance)
 
-TOKEN ADDRESS MAPPINGS (Base network):
-- ETH: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
-- USDC: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+{token_mappings}
 - USDT: 0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2
 - DAI: 0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb
 - WETH: 0x4200000000000000000000000000000000000006
