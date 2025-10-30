@@ -303,36 +303,35 @@ class DeFiWorkflowRAG:
         Returns:
             Dictionary mapping chain name to list of token dictionaries
         """
+        # Try simpler query first
+        query_str = '!(match &self (token-address $chain $symbol $name $address $decimals) $chain)'
+        results = self.metta.run(query_str)
+        
+        print(f"[DEBUG] Token address simple query results: {results}")
+        
+        # Full query
         query_str = '!(match &self (token-address $chain $symbol $name $address $decimals) ($chain $symbol $name $address $decimals))'
         results = self.metta.run(query_str)
         
         print(f"[DEBUG] get_all_token_addresses raw results: {results}")
         print(f"[DEBUG] results type: {type(results)}, len: {len(results) if results else 0}")
-        if results and len(results) > 0:
-            print(f"[DEBUG] First result: {results[0]}, type: {type(results[0])}")
-            if len(results[0]) > 0:
-                print(f"[DEBUG] First item in first result: {results[0][0]}, type: {type(results[0][0])}")
+        if results and len(results) > 0 and len(results[0]) > 0:
+            print(f"[DEBUG] First item: {results[0][0]}, type: {type(results[0][0])}")
+            # Try string parsing like we did for strategies
+            item_str = str(results[0][0])
+            print(f"[DEBUG] First item as string: {item_str}")
         
-        # Group by chain
+        # Group by chain - parse like strategies (Atom format)
         token_map = {}
         if results and len(results) > 0:
             for result_set in results:
                 if isinstance(result_set, list):
                     for item in result_set:
-                        print(f"[DEBUG] Processing token item: {item}, type: {type(item)}")
-                        if isinstance(item, list) and len(item) >= 5:
-                            chain = str(item[0]).strip('"')
-                            if chain not in token_map:
-                                token_map[chain] = []
-                            
-                            token_map[chain].append({
-                                "symbol": str(item[1]).strip('"'),
-                                "name": str(item[2]).strip('"'),
-                                "address": str(item[3]).strip('"'),
-                                "decimals": str(item[4]).strip('"')
-                            })
+                        # Convert to string and parse: (chain symbol ValueAtom(name) ValueAtom(address) ValueAtom(decimals))
+                        item_str = str(item).strip('()')
+                        # Try to extract components
+                        print(f"[DEBUG] Parsing token: {item_str}")
         
-        print(f"[DEBUG] Final token_map: {token_map}")
         return token_map
     
     def get_all_tokens(self) -> List[Dict[str, str]]:
