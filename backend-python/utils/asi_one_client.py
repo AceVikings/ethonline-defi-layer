@@ -348,7 +348,25 @@ Respond with ONLY valid JSON, no markdown code blocks, no explanations."""
                 json={
                     "model": "asi1-mini",
                     "messages": [
-                        {"role": "system", "content": "You are a DeFi workflow architect. Generate ONLY what the user explicitly requests. Do NOT add extra helpful steps like transfers unless specifically asked. Output valid JSON only."},
+                        {"role": "system", "content": """You are a DeFi workflow architect. Generate ONLY what the user explicitly requests. 
+
+CRITICAL CHAIN PARSING RULES - MUST FOLLOW EXACTLY:
+- "base sepolia", "basesepolia", or "base-sepolia" in user query → MUST use chain value "basesepolia"
+- "sepolia" alone → use "sepolia" (Ethereum Sepolia, NOT Base Sepolia)
+- These are DIFFERENT chains with DIFFERENT token addresses
+
+CRITICAL TOKEN ADDRESS RULES - MUST FOLLOW EXACTLY:
+- Look up token addresses in the TOKEN ADDRESS MAPPINGS section for the SPECIFIC chain
+- Base Sepolia USDC: 0x036CbD53842c5426634e7929541eC2318f3dCF7e
+- Sepolia USDC: 0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8
+- DO NOT mix addresses from different chains
+
+CRITICAL TRANSFER NODE RULES - MUST FOLLOW EXACTLY:
+- Transfer nodes MUST have: "token" (token ADDRESS not symbol), "to" (recipient address), "chain", "amount"
+- After a swap, transfer node "token" field MUST use the swap's "toToken" address
+- Transfer node "to" field MUST be the recipient wallet address from user query
+
+Output valid JSON only. Follow the examples EXACTLY."""},
                         {"role": "user", "content": prompt}
                     ]
                 },
