@@ -151,7 +151,12 @@ async def handle_blockchain_query(ctx: Context, sender: str, msg: BlockchainQuer
         query_lower = msg.query.lower()
         
         # Determine which Blockscout tool to call based on query
-        if 'balance' in query_lower or 'holdings' in query_lower:
+        if 'tool' in query_lower and ('list' in query_lower or 'what' in query_lower or 'available' in query_lower):
+            # List available tools
+            tool_name = "list_tools"
+            arguments = {}
+        
+        elif 'balance' in query_lower or 'holdings' in query_lower:
             tool_name = "get_address_token_balances"
             arguments = {
                 "chainId": msg.chain_id,
