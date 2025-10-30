@@ -156,12 +156,20 @@ def generate_workflow():
         
         try:
             # Build context from RAG including token addresses
+            strategies = rag.query_all_strategies()
+            protocols = rag.query_protocols()
+            token_addresses = rag.get_all_token_addresses()
+            
+            print(f"📋 [DEBUG] Strategies type: {type(strategies)}, content: {strategies}")
+            print(f"📋 [DEBUG] Protocols type: {type(protocols)}, content: {protocols}")
+            print(f"📋 [DEBUG] Token addresses type: {type(token_addresses)}, keys: {list(token_addresses.keys()) if isinstance(token_addresses, dict) else 'NOT A DICT'}")
+            
             context = {
                 'intent': intent,
                 'keyword': keyword,
-                'strategies': rag.query_all_strategies(),
-                'protocols': rag.query_protocols(),
-                'token_addresses': rag.get_all_token_addresses()
+                'strategies': strategies,
+                'protocols': protocols,
+                'token_addresses': token_addresses
             }
             
             asi_result = asi_client.generate_workflow_from_intent(user_query, context)
