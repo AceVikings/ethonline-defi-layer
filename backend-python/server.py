@@ -170,7 +170,9 @@ def generate_workflow():
                 workflow_json = asi_result
                 print(f"✅ Generated workflow with {len(workflow_json.get('nodes', []))} nodes from ASI:One")
         except Exception as e:
+            import traceback
             print(f"[ASI] Error generating with ASI:One: {e}")
+            print(f"[ASI] Traceback: {traceback.format_exc()}")
             workflow_json = None
         
         # Step 3: Fallback to rule-based generation
