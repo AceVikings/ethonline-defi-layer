@@ -1018,23 +1018,31 @@ async function executeTransferNode(node, pkpInfo, previousOutputs = []) {
   let amount = config.amount;
   if (!amount || amount === '') {
     // Walk previous outputs from latest to oldest and pick the first sensible amount
+    // Note: previousOutputs contains the direct result objects from executionContext
     for (let i = previousOutputs.length - 1; i >= 0; i--) {
       const prev = previousOutputs[i];
-      if (prev && prev.output) {
-        // common field produced by swap/aave nodes
-        if (prev.output.amountReceived) {
-          amount = prev.output.amountReceived;
-          console.log(`   [Transfer] Using amount from previous node (${prev.nodeId || 'unknown'}): ${amount}`);
-          break;
-        }
+      if (!prev) continue;
+      
+      // Check if the result has an output.amountReceived field (swap/aave nodes)
+      if (prev.output && prev.output.amountReceived) {
+        amount = prev.output.amountReceived;
+        console.log(`   [Transfer] Using output.amountReceived from previous node: ${amount}`);
+        break;
+      }
+      
+      // Also check for direct amountReceived field (some nodes return it at top level)
+      if (prev.amountReceived) {
+        amount = prev.amountReceived;
+        console.log(`   [Transfer] Using amountReceived from previous node: ${amount}`);
+        break;
+      }
 
-        // fallback to other numeric fields
-        const numeric = extractNumericValue(prev.output);
-        if (numeric && numeric > 0) {
-          amount = numeric;
-          console.log(`   [Transfer] Using numeric amount extracted from previous node (${prev.nodeId || 'unknown'}): ${amount}`);
-          break;
-        }
+      // fallback to other numeric fields
+      const numeric = extractNumericValue(prev);
+      if (numeric && numeric > 0) {
+        amount = numeric;
+        console.log(`   [Transfer] Using numeric amount extracted from previous node: ${amount}`);
+        break;
       }
     }
   }
