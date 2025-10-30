@@ -239,6 +239,8 @@ def initialize_defi_knowledge(metta: MeTTa):
         ("polygonmumbai", "WMATIC", "Wrapped Matic", "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889", "18"),
     ]
     
+    print(f"[MeTTa] Adding {len(token_addresses)} token addresses...")
+    token_count = 0
     for chain, symbol, name, address, decimals in token_addresses:
         metta.space().add_atom(E(
             S("token-address"),
@@ -248,6 +250,11 @@ def initialize_defi_knowledge(metta: MeTTa):
             ValueAtom(address),
             ValueAtom(decimals)
         ))
+        token_count += 1
+        if token_count <= 3:  # Log first 3
+            print(f"[MeTTa] Added: token-address {chain} {symbol} {address}")
+    
+    print(f"[MeTTa] ✅ Added {token_count} token addresses")
     
     # ============================================
     # 4. DEFINE BLOCKCHAIN NETWORKS
