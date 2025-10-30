@@ -342,6 +342,11 @@ Example valid workflow:
 Respond with ONLY valid JSON, no markdown code blocks, no explanations."""
 
         try:
+            # Log the prompt for debugging
+            print(f"🔍 Generating workflow for query: {user_query}")
+            print(f"📊 Prompt length: {len(prompt)} characters")
+            print(f"🗺️  Chain context included: {'token_addresses' in context if context else 'No context'}")
+            
             response = requests.post(
                 f"{self.base_url}/chat/completions",
                 headers=self.headers,
