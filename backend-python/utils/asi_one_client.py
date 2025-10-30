@@ -346,12 +346,13 @@ Respond with ONLY valid JSON, no markdown code blocks, no explanations."""
 
         try:
             # Log the prompt for debugging
-            print(f"🔍 [ASI Client v{CLIENT_VERSION}] Generating workflow for query: {user_query}")
-            print(f"📊 [ASI Client v{CLIENT_VERSION}] Prompt length: {len(prompt)} characters")
-            print(f"🗺️  [ASI Client v{CLIENT_VERSION}] Chain context included: {'token_addresses' in context if context else 'No context'}")
+            import sys
+            print(f"🔍 [ASI Client v{CLIENT_VERSION}] Generating workflow for query: {user_query}", flush=True)
+            print(f"📊 [ASI Client v{CLIENT_VERSION}] Prompt length: {len(prompt)} characters", flush=True)
+            print(f"🗺️  [ASI Client v{CLIENT_VERSION}] Chain context included: {'token_addresses' in context if context else 'No context'}", flush=True)
             if context and 'token_addresses' in context:
                 chains = list(context['token_addresses'].keys())
-                print(f"🌐 [ASI Client v{CLIENT_VERSION}] Available chains: {', '.join(chains[:5])}")
+                print(f"🌐 [ASI Client v{CLIENT_VERSION}] Available chains: {', '.join(chains[:5])}", flush=True)
             
             response = requests.post(
                 f"{self.base_url}/chat/completions",
@@ -390,6 +391,8 @@ Output valid JSON only. Follow the examples EXACTLY."""},
             # ASI:One response format
             content = result['choices'][0]['message']['content']
             
+            print(f"🤖 [ASI Client v{CLIENT_VERSION}] Raw AI response (first 500 chars): {content[:500]}", flush=True)
+            
             # Extract JSON from response (might be wrapped in code blocks)
             import json
             import re
@@ -401,6 +404,14 @@ Output valid JSON only. Follow the examples EXACTLY."""},
             else:
                 # Try direct JSON parse
                 workflow_json = json.loads(content)
+            
+            # Log what chain was generated
+            if workflow_json and 'nodes' in workflow_json:
+                for node in workflow_json['nodes']:
+                    if node.get('type') == 'swap' and 'data' in node and 'config' in node['data']:
+                        chain = node['data']['config'].get('chain', 'NOT SET')
+                        toToken = node['data']['config'].get('toToken', 'NOT SET')
+                        print(f"⚠️  [ASI Client v{CLIENT_VERSION}] Generated swap node: chain={chain}, toToken={toToken[:20]}...", flush=True)
             
             return workflow_json
             
