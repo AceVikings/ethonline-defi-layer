@@ -993,17 +993,17 @@ async function executeAaveNode(node, pkpInfo, previousOutputs = []) {
   }
 }
 
-async function executeTransferNode(node, pkpInfo) {
+async function executeTransferNode(node, pkpInfo, previousOutputs = []) {
   const startTime = Date.now();
   const config = node.config || {};
-  
+
   console.log('   [Transfer] Executing token transfer...');
   console.log(`   Chain: ${config.chain || 'Not specified'}`);
   console.log(`   Token: ${config.token || 'Not specified'}`);
   console.log(`   To: ${config.recipient || 'Not specified'}`);
-  console.log(`   Amount: ${config.amount || 'Not specified'}`);
-  
-  // Validate required fields
+  console.log(`   Config amount: ${config.amount || 'Not specified'}`);
+
+  // Validate required fields (except amount - we'll try to auto-fill from previous outputs)
   if (!config.chain) {
     throw new Error('Transfer node missing required configuration: chain');
   }
@@ -1013,8 +1013,34 @@ async function executeTransferNode(node, pkpInfo) {
   if (!config.recipient) {
     throw new Error('Transfer node missing required configuration: recipient');
   }
-  if (!config.amount) {
-    throw new Error('Transfer node missing required configuration: amount');
+
+  // Determine amount: prefer config.amount but fall back to previous node outputs
+  let amount = config.amount;
+  if (!amount || amount === '') {
+    // Walk previous outputs from latest to oldest and pick the first sensible amount
+    for (let i = previousOutputs.length - 1; i >= 0; i--) {
+      const prev = previousOutputs[i];
+      if (prev && prev.output) {
+        // common field produced by swap/aave nodes
+        if (prev.output.amountReceived) {
+          amount = prev.output.amountReceived;
+          console.log(`   [Transfer] Using amount from previous node (${prev.nodeId || 'unknown'}): ${amount}`);
+          break;
+        }
+
+        // fallback to other numeric fields
+        const numeric = extractNumericValue(prev.output);
+        if (numeric && numeric > 0) {
+          amount = numeric;
+          console.log(`   [Transfer] Using numeric amount extracted from previous node (${prev.nodeId || 'unknown'}): ${amount}`);
+          break;
+        }
+      }
+    }
+  }
+
+  if (!amount) {
+    throw new Error('Transfer node missing required configuration: amount (no previous output to infer from)');
   }
 
   // Validate recipient address format
@@ -1039,7 +1065,7 @@ async function executeTransferNode(node, pkpInfo) {
       transferResult = await transferNativeToken({
         chainName: config.chain,
         recipient: config.recipient,
-        amount: config.amount.toString(),
+        amount: amount.toString(),
         userPkpAddress: delegatorPkpEthAddress,
       });
     } else {
@@ -1051,7 +1077,7 @@ async function executeTransferNode(node, pkpInfo) {
         chainName: config.chain,
         tokenAddress: config.token,
         recipient: config.recipient,
-        amount: config.amount.toString(),
+        amount: amount.toString(),
         userPkpAddress: delegatorPkpEthAddress,
       });
     }
@@ -1072,7 +1098,7 @@ async function executeTransferNode(node, pkpInfo) {
       chainId: getChainId(config.chain),
       txHash: transferResult.txHash,
       recipient: config.recipient,
-      amount: config.amount,
+      amount: amount,
       token: transferResult.token || config.token,
       blockNumber: transferResult.blockNumber,
       gasUsed: transferResult.gasUsed,

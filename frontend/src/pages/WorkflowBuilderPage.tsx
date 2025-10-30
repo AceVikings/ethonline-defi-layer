@@ -186,12 +186,17 @@ const TriggerConfig = ({
   const triggerType = config.triggerType || "manual";
   const shownTxHashes = useRef<Set<string>>(new Set());
   const hasShownCompletion = useRef(false);
+  const pollRef = useRef<number | null>(null);
 
   // Poll for execution updates
   useEffect(() => {
     if (!executionId || !triggering) return;
 
-    const pollInterval = setInterval(async () => {
+    // Guard: only create one interval per execution
+    if (pollRef.current) return;
+
+    // Poll every 3 seconds to reduce load and avoid rapid spamming
+    pollRef.current = window.setInterval(async () => {
       try {
         const response = await apiClient.getExecutionDetails(executionId);
         setExecutionData(response.execution);
@@ -202,7 +207,10 @@ const TriggerConfig = ({
           response.execution.status === "failed"
         ) {
           setTriggering(false);
-          clearInterval(pollInterval);
+          if (pollRef.current) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
+          }
 
           if (response.execution.status === "completed") {
             // Only show completion toast once
@@ -210,21 +218,21 @@ const TriggerConfig = ({
               hasShownCompletion.current = true;
               showToast.success("Workflow execution completed!");
             }
-            
+
             // Extract and show transaction notifications
             if (response.execution.steps && response.execution.steps.length > 0) {
               response.execution.steps.forEach((step: any) => {
                 // Check if step has a txHash (in output.txHash or output.swapTxHash)
                 const txHash = step.output?.txHash || step.output?.swapTxHash;
                 const chainId = step.output?.chainId?.toString();
-                
+
                 if (txHash && chainId && !shownTxHashes.current.has(txHash)) {
                   shownTxHashes.current.add(txHash);
                   openTxToast(chainId, txHash).catch((err) => {
                     console.error('Failed to show transaction notification:', err);
                   });
                 }
-                
+
                 // Also check for transactions array (for nodes with multiple txs)
                 if (step.output?.transactions && Array.isArray(step.output.transactions)) {
                   step.output.transactions.forEach((tx: any) => {
@@ -245,9 +253,14 @@ const TriggerConfig = ({
       } catch (error) {
         console.error("Failed to fetch execution details:", error);
       }
-    }, 1000); // Poll every second
+    }, 3000); // Poll every 3 seconds
 
-    return () => clearInterval(pollInterval);
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
   }, [executionId, triggering, openTxToast]);
 
   const handleManualTrigger = async () => {
