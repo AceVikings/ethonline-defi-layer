@@ -138,12 +138,15 @@ KEYWORD: <extracted_keyword>"""
         else:
             node_types_desc = "\nAvailable node types: trigger, swap, aave, transfer, condition, ai\n"
         
-        # Build examples from strategies
+        # Build examples from strategies - safely handle empty or malformed data
         examples_desc = ""
-        if context and "strategies" in context:
-            examples_desc = "\nExample workflows:\n"
-            for strat in context["strategies"][:3]:  # Show first 3
-                examples_desc += f"- {strat['description']}: {strat['sequence']}\n"
+        if context and "strategies" in context and context["strategies"]:
+            # Filter out empty lists and non-dict items
+            valid_strategies = [s for s in context["strategies"] if isinstance(s, dict) and 'description' in s and 'sequence' in s]
+            if valid_strategies:
+                examples_desc = "\nExample workflows:\n"
+                for strat in valid_strategies[:3]:  # Show first 3
+                    examples_desc += f"- {strat['description']}: {strat['sequence']}\n"
         
         # Build comprehensive token address mappings - always include this data
         token_mappings = """

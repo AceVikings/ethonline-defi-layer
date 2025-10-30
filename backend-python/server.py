@@ -466,13 +466,16 @@ def generate_workflow_from_query(user_query: str, intent: str, keyword: str) -> 
         elif "usdt" in query_lower:
             token_out = "USDT"
         
-        # Extract chain if mentioned
-        chain = "base"
-        if "ethereum" in query_lower or "mainnet" in query_lower:
-            chain = "ethereum"
-        elif "sepolia" in query_lower:
+        # Extract chain if mentioned - CHECK FOR MULTI-WORD CHAINS FIRST
+        chain = "basesepolia"  # Default to base sepolia testnet
+        if "base sepolia" in query_lower or "basesepolia" in query_lower or "base-sepolia" in query_lower:
+            chain = "basesepolia"
+        elif "sepolia" in query_lower and "base" not in query_lower:
+            # Only use plain sepolia if "base" is NOT mentioned
             chain = "sepolia"
-        elif "base" in query_lower:
+        elif "ethereum" in query_lower or ("eth" in query_lower and "mainnet" in query_lower):
+            chain = "ethereum"
+        elif "base" in query_lower and "sepolia" not in query_lower:
             chain = "base"
         
         # Get token addresses
