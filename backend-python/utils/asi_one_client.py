@@ -379,6 +379,126 @@ in 2-3 sentences. Focus on the user's goal and the steps taken."""
                 "finish_reason": "error"
             }
     
+    def query_agent_with_retry(self, 
+                                prompt: str, 
+                                agent_address: str,
+                                max_wait_seconds: int = 30,
+                                poll_interval: float = 1.0) -> Dict[str, Any]:
+        """
+        Query an agent via ASI:One and wait for the complete response.
+        
+        This handles the asynchronous nature of agent communication by:
+        1. Sending the query to ASI:One
+        2. Checking if it delegated to an agent
+        3. Polling for the agent's response with timeout
+        
+        Args:
+            prompt: User's query
+            agent_address: Target agent address (e.g., Blockscout agent)
+            max_wait_seconds: Maximum time to wait for response (default 30s)
+            poll_interval: Time between poll attempts in seconds (default 1.0s)
+            
+        Returns:
+            Dictionary with the final response from the agent
+        """
+        import time
+        
+        # First, send the query to ASI:One
+        messages = [
+            {"role": "system", "content": "You are a helpful blockchain data assistant. When asked about blockchain transactions or addresses, use the available agent tools to fetch accurate data."},
+            {"role": "user", "content": prompt}
+        ]
+        
+        request_body = {
+            "model": "asi1-mini",
+            "messages": messages,
+            "temperature": 0.3,
+            "max_tokens": 1000
+        }
+        
+        try:
+            # Initial query
+            response = requests.post(
+                f"{self.base_url}/chat/completions",
+                headers=self.headers,
+                json=request_body,
+                timeout=30
+            )
+            
+            response.raise_for_status()
+            result = response.json()
+            
+            initial_content = result['choices'][0]['message'].get('content', '')
+            
+            # Check if ASI:One is delegating to an agent (indicated by messages like "One moment...")
+            if "one moment" in initial_content.lower() or "checking" in initial_content.lower() or "let me" in initial_content.lower():
+                print(f"🔄 ASI:One delegating to agent, waiting for response...")
+                
+                # Poll for the complete response
+                start_time = time.time()
+                attempts = 0
+                
+                while (time.time() - start_time) < max_wait_seconds:
+                    attempts += 1
+                    time.sleep(poll_interval)
+                    
+                    # Re-query to check if response is complete
+                    # We can add the initial response to conversation history
+                    poll_messages = messages + [
+                        {"role": "assistant", "content": initial_content},
+                        {"role": "user", "content": "Please provide the complete response."}
+                    ]
+                    
+                    poll_response = requests.post(
+                        f"{self.base_url}/chat/completions",
+                        headers=self.headers,
+                        json={
+                            **request_body,
+                            "messages": poll_messages
+                        },
+                        timeout=30
+                    )
+                    
+                    poll_response.raise_for_status()
+                    poll_result = poll_response.json()
+                    poll_content = poll_result['choices'][0]['message'].get('content', '')
+                    
+                    # Check if we got actual data (not another "waiting" message)
+                    if poll_content and not any(wait_word in poll_content.lower() for wait_word in ["one moment", "checking", "please wait", "let me"]):
+                        # Check if response contains actual data (transaction info, addresses, etc.)
+                        if any(indicator in poll_content.lower() for indicator in ["transaction", "address", "block", "hash", "0x", "eth", "gas", "value"]):
+                            print(f"✅ Got complete response after {attempts} attempts ({time.time() - start_time:.1f}s)")
+                            return {
+                                "content": poll_content,
+                                "agent_address": agent_address,
+                                "response_time": time.time() - start_time,
+                                "success": True
+                            }
+                
+                # Timeout reached
+                print(f"⏱️  Timeout after {max_wait_seconds}s, returning partial response")
+                return {
+                    "content": initial_content + "\n\n(Note: The agent response took longer than expected. Please try again.)",
+                    "agent_address": agent_address,
+                    "response_time": max_wait_seconds,
+                    "success": False,
+                    "error": "timeout"
+                }
+            else:
+                # Got complete response immediately
+                return {
+                    "content": initial_content,
+                    "success": True
+                }
+                
+        except Exception as e:
+            print(f"❌ Error querying agent: {e}")
+            return {
+                "content": f"I encountered an error while processing your request: {str(e)}",
+                "success": False,
+                "error": str(e)
+            }
+    
     def _fallback_intent_classification(self, query: str) -> Tuple[str, str]:
         """Fallback intent classification using simple keyword matching."""
         query_lower = query.lower()
