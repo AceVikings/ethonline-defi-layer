@@ -1218,13 +1218,10 @@ async function executeAINode(node, pkpInfo, previousOutputs = [], nodeMap = new 
   }
   
   console.log('   [AI/ASI:One] Executing AI with prompt:', config.prompt);
-  console.log('   [AI/ASI:One] Agent Address:', config.agentAddress || 'None');
+  console.log('   [AI/ASI:One] Agent Address:', config.agentAddress || 'None (using AI directly)');
   console.log('   [AI/ASI:One] Previous outputs:', previousOutputs);
   
   try {
-    // Check if agent address is provided for direct agent connection
-    const hasAgentAddress = config.agentAddress && config.agentAddress.trim().length > 0;
-    
     // Prepare context from previous outputs
     let contextInfo = '';
     if (previousOutputs.length > 0) {
@@ -1234,55 +1231,30 @@ async function executeAINode(node, pkpInfo, previousOutputs = [], nodeMap = new 
       });
     }
     
-    // If agent address is provided, route through Python backend for proper agent communication
+    // Check if agent address is provided for ASI:One delegation
+    const hasAgentAddress = config.agentAddress && config.agentAddress.trim().length > 0;
+    
+    // Build system prompt - include agent address for ASI:One to delegate
+    let systemPrompt = config.systemPrompt || 'You are a helpful DeFi assistant that analyzes blockchain data and provides insights.';
+    
     if (hasAgentAddress) {
-      console.log('   [AI/ASI:One] Routing to Python backend for agent communication...');
+      console.log('   [AI/ASI:One] Using ASI:One delegation to agent:', config.agentAddress);
       
-      const pythonBackendUrl = process.env.PYTHON_BACKEND_URL || 'http://localhost:8080';
-      const response = await fetch(`${pythonBackendUrl}/api/agents/query`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: config.prompt + contextInfo,
-          agentAddress: config.agentAddress
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Python backend returned ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Agent query failed');
-      }
-      
-      console.log('   [AI/ASI:One] Agent response received:', data.response);
-      
-      return {
-        success: true,
-        message: 'Agent query completed',
-        prompt: config.prompt,
-        response: data.response,
-        model: 'agent',
-        agentAddress: config.agentAddress,
-        responseTime: data.responseTime,
-        output: {
-          response: data.response,
-          agentAddress: config.agentAddress,
-          responseTime: data.responseTime,
-          timestamp: new Date().toISOString()
-        }
-      };
+      // Add agent delegation instruction to system prompt
+      systemPrompt = `You are delegating this request to an agent with address: ${config.agentAddress}
+
+The agent specializes in blockchain data queries and can provide:
+- Token balances and transfers
+- Transaction history
+- NFT metadata and ownership
+- Contract information
+
+Please forward the user's query to this agent and return the response.
+
+${systemPrompt}`;
+    } else {
+      console.log('   [AI/ASI:One] Using ASI:One AI directly (no agent delegation)...');
     }
-    
-    // No agent address - use ASI:One directly
-    console.log('   [AI/ASI:One] Using ASI:One API directly (no agent)...');
-    
-    const systemPrompt = config.systemPrompt || 'You are a helpful DeFi assistant that analyzes blockchain data and provides insights.';
     
     const requestBody = {
       model: 'asi1-mini',
@@ -1318,16 +1290,24 @@ async function executeAINode(node, pkpInfo, previousOutputs = [], nodeMap = new 
     
     console.log('   [AI/ASI:One] Response:', aiResponse);
     
+    // Determine if agent delegation was used
+    const delegatedAgent = hasAgentAddress ? config.agentAddress : null;
+    const responseMessage = delegatedAgent 
+      ? 'AI analysis completed (delegated to agent)'
+      : 'AI analysis completed';
+    
     return {
       success: true,
-      message: 'AI analysis completed',
+      message: responseMessage,
       prompt: config.prompt,
       response: aiResponse,
       model: 'asi1-mini',
-      agentAddress: null,
+      agentAddress: delegatedAgent,
+      delegatedToAgent: !!delegatedAgent,
       output: {
         response: aiResponse,
-        agentAddress: null,
+        agentAddress: delegatedAgent,
+        delegatedToAgent: !!delegatedAgent,
         timestamp: new Date().toISOString()
       }
     };
