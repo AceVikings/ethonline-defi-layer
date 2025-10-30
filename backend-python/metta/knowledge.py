@@ -35,6 +35,7 @@ def initialize_defi_knowledge(metta: MeTTa):
         metta: MeTTa instance to populate
     """
     
+    print("[MeTTa] ===== INITIALIZING DEFI KNOWLEDGE GRAPH =====", flush=True)
     print("[MeTTa] Initializing DeFi Knowledge Graph...")
     
     # ============================================
