@@ -126,10 +126,17 @@ def call_blockscout_mcp(tool_name: str, arguments: dict) -> dict:
                 if content and len(content) > 0:
                     # Extract text from first content item
                     text_data = content[0].get('text', '{}')
+                    
+                    # For list_tools, the response is already structured, not JSON string
+                    if tool_name == "list_tools":
+                        return {"tools": final_result['result']}
+                    
+                    # For other tools, parse the JSON response
                     try:
                         return json.loads(text_data)
                     except json.JSONDecodeError as e:
-                        return {"error": f"Invalid JSON in content: {str(e)}", "raw": text_data[:200]}
+                        # If it's not JSON, return as plain text
+                        return {"result": text_data, "raw": True}
             
             return {"error": "No valid result in MCP response", "raw_lines": raw_lines[:5]}
         else:
