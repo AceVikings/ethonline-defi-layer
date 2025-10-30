@@ -100,8 +100,13 @@ def call_blockscout_mcp(tool_name: str, arguments: dict) -> dict:
         if response.status_code == 200:
             # Parse SSE stream to get final result
             final_result = None
+            raw_lines = []
             for line in response.iter_lines(decode_unicode=True):
-                if not line or not line.startswith('data: '):
+                if not line:
+                    continue
+                raw_lines.append(line)
+                    
+                if not line.startswith('data: '):
                     continue
                 
                 data_str = line[6:]  # Remove "data: " prefix
@@ -109,19 +114,26 @@ def call_blockscout_mcp(tool_name: str, arguments: dict) -> dict:
                     data = json.loads(data_str)
                     if isinstance(data, dict) and 'id' in data and 'result' in data:
                         final_result = data
-                except json.JSONDecodeError:
+                except json.JSONDecodeError as e:
+                    print(f"[MCP] Failed to parse SSE line: {data_str[:100]}... Error: {e}")
                     continue
+            
+            if not final_result:
+                print(f"[MCP] No final result found. Raw lines: {raw_lines[:5]}")
             
             if final_result and 'result' in final_result:
                 content = final_result['result'].get('content', [])
                 if content and len(content) > 0:
                     # Extract text from first content item
                     text_data = content[0].get('text', '{}')
-                    return json.loads(text_data)
+                    try:
+                        return json.loads(text_data)
+                    except json.JSONDecodeError as e:
+                        return {"error": f"Invalid JSON in content: {str(e)}", "raw": text_data[:200]}
             
-            return {"error": "No valid result in MCP response"}
+            return {"error": "No valid result in MCP response", "raw_lines": raw_lines[:5]}
         else:
-            return {"error": f"HTTP {response.status_code}"}
+            return {"error": f"HTTP {response.status_code}: {response.text[:200]}"}
             
     except Exception as e:
         return {"error": str(e)}
