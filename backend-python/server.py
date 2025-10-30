@@ -758,6 +758,145 @@ def get_default_config(base_type, full_type=""):
     return rag.get_node_config(base_type)
 
 
+# ==================== Agent Query Endpoints ====================
+
+# Global storage for agent responses (simple in-memory queue)
+agent_responses = {}
+
+@app.route('/api/agents/query', methods=['POST'])
+def query_agent():
+    """
+    Query a specific agent via uAgents protocol and wait for response.
+    
+    This endpoint sends a message directly to the agent via Agentverse mailbox
+    and waits for the response using a synchronous polling mechanism.
+    
+    Request body:
+    {
+        "query": "What tools do you have access to?",
+        "agentAddress": "agent1qf7aggz..." // Optional, defaults to Blockscout agent
+    }
+    
+    Response:
+    {
+        "success": true,
+        "response": "I have access to...",
+        "agentAddress": "agent1qf7aggz...",
+        "responseTime": 2.3
+    }
+    """
+    try:
+        data = request.get_json()
+        query = data.get('query', '')
+        agent_address = data.get('agentAddress', 'agent1qfwanzm7l94lcd57p9zsl25y4p6clssp8xjjrd0f8f6nc9r3rx8h6978x2r')  # Blockscout agent default
+        
+        if not query:
+            return jsonify({
+                "success": False,
+                "error": "Query is required"
+            }), 400
+        
+        print(f"🤖 Agent query request: '{query}'")
+        print(f"   Target agent: {agent_address}")
+        
+        # Import uagents for direct messaging
+        from uagents import Agent, Context, Model
+        from uagents.query import query as uagent_query
+        import asyncio
+        import time
+        
+        # Define message model matching Blockscout agent's BlockchainQuery
+        class BlockchainQuery(Model):
+            query: str
+            chain_id: str = "8453"
+            address: str = ""
+        
+        class BlockchainResponse(Model):
+            success: bool
+            data: dict = {}
+            error: str = ""
+        
+        # Create the query message
+        message = BlockchainQuery(
+            query=query,
+            chain_id="8453",  # Base mainnet
+            address=""
+        )
+        
+        print(f"   Sending message to agent...")
+        start_time = time.time()
+        
+        # Use uagents query function to send message and wait for response
+        async def send_query():
+            try:
+                response = await uagent_query(
+                    destination=agent_address,
+                    message=message,
+                    timeout=30.0  # 30 second timeout
+                )
+                return response
+            except Exception as e:
+                print(f"   Query error: {e}")
+                return None
+        
+        # Run the async query
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            response = loop.run_until_complete(send_query())
+        finally:
+            loop.close()
+        
+        response_time = time.time() - start_time
+        
+        if response:
+            print(f"✅ Agent response received in {response_time:.2f}s")
+            
+            # Parse response (it should be a BlockchainResponse model)
+            if hasattr(response, 'success') and response.success:
+                response_text = json.dumps(response.data) if response.data else "Query successful"
+                return jsonify({
+                    "success": True,
+                    "response": response_text,
+                    "agentAddress": agent_address,
+                    "responseTime": response_time
+                })
+            elif hasattr(response, 'error') and response.error:
+                return jsonify({
+                    "success": False,
+                    "response": response.error,
+                    "error": response.error,
+                    "agentAddress": agent_address
+                }), 500
+            else:
+                # Generic response - convert to string
+                response_text = str(response)
+                return jsonify({
+                    "success": True,
+                    "response": response_text,
+                    "agentAddress": agent_address,
+                    "responseTime": response_time
+                })
+        else:
+            print(f"⏱️  Agent query timed out after {response_time:.2f}s")
+            return jsonify({
+                "success": False,
+                "response": "Agent did not respond within timeout period",
+                "error": "timeout",
+                "agentAddress": agent_address
+            }), 408  # Request Timeout
+            
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
 # ==================== MCP Endpoints ====================
 
 @app.route('/api/mcp/tools', methods=['POST'])

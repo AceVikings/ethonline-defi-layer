@@ -1234,14 +1234,56 @@ async function executeAINode(node, pkpInfo, previousOutputs = [], nodeMap = new 
       });
     }
     
-    // Build system prompt based on agent connections
-    let systemPrompt = config.systemPrompt || 'You are a helpful DeFi assistant that analyzes blockchain data and provides insights.';
-    
+    // If agent address is provided, route through Python backend for proper agent communication
     if (hasAgentAddress) {
-      systemPrompt += `\n\nYou are connected to an Agentverse agent at address: ${config.agentAddress}. This agent can handle tool calls and provide real-time blockchain data, DeFi operations, or other specialized capabilities. When the user asks for blockchain data or operations, the connected agent will handle the actual execution.`;
+      console.log('   [AI/ASI:One] Routing to Python backend for agent communication...');
+      
+      const pythonBackendUrl = process.env.PYTHON_BACKEND_URL || 'http://localhost:8080';
+      const response = await fetch(`${pythonBackendUrl}/api/agents/query`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: config.prompt + contextInfo,
+          agentAddress: config.agentAddress
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Python backend returned ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Agent query failed');
+      }
+      
+      console.log('   [AI/ASI:One] Agent response received:', data.response);
+      
+      return {
+        success: true,
+        message: 'Agent query completed',
+        prompt: config.prompt,
+        response: data.response,
+        model: 'agent',
+        agentAddress: config.agentAddress,
+        responseTime: data.responseTime,
+        output: {
+          response: data.response,
+          agentAddress: config.agentAddress,
+          responseTime: data.responseTime,
+          timestamp: new Date().toISOString()
+        }
+      };
     }
     
-    // Build request body
+    // No agent address - use ASI:One directly
+    console.log('   [AI/ASI:One] Using ASI:One API directly (no agent)...');
+    
+    const systemPrompt = config.systemPrompt || 'You are a helpful DeFi assistant that analyzes blockchain data and provides insights.';
+    
     const requestBody = {
       model: 'asi1-mini',
       messages: [
@@ -1258,7 +1300,6 @@ async function executeAINode(node, pkpInfo, previousOutputs = [], nodeMap = new 
       max_tokens: config.maxTokens || 500
     };
     
-    // Call ASI:One API
     const response = await fetch('https://api.asi1.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -1283,10 +1324,10 @@ async function executeAINode(node, pkpInfo, previousOutputs = [], nodeMap = new 
       prompt: config.prompt,
       response: aiResponse,
       model: 'asi1-mini',
-      agentAddress: config.agentAddress || null,
+      agentAddress: null,
       output: {
         response: aiResponse,
-        agentAddress: config.agentAddress || null,
+        agentAddress: null,
         timestamp: new Date().toISOString()
       }
     };
