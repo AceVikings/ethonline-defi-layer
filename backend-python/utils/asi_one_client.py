@@ -145,22 +145,68 @@ KEYWORD: <extracted_keyword>"""
             for strat in context["strategies"][:3]:  # Show first 3
                 examples_desc += f"- {strat['description']}: {strat['sequence']}\n"
         
-        # Build token address mappings from context
-        token_mappings = ""
-        if context and "token_addresses" in context:
-            token_mappings = "\nTOKEN ADDRESS MAPPINGS BY NETWORK:\n"
-            for chain, tokens in context["token_addresses"].items():
-                token_mappings += f"\n{chain.upper()}:\n"
-                for token in tokens[:6]:  # Show top 6 tokens per chain
-                    token_mappings += f"- {token['symbol']}: {token['address']} (decimals: {token['decimals']})\n"
-        else:
-            # Fallback to Base Sepolia tokens
-            token_mappings = """
-TOKEN ADDRESS MAPPINGS (Base Sepolia - default testnet):
-- ETH: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
-- USDC: 0x036CbD53842c5426634e7929541eC2318f3dCF7e
-- WETH: 0x4200000000000000000000000000000000000006
+        # Build comprehensive token address mappings - always include this data
+        token_mappings = """
+TOKEN ADDRESS MAPPINGS BY NETWORK (ALWAYS USE THESE EXACT ADDRESSES):
+
+BASESEPOLIA (Base Testnet - Chain ID: 84532):
+- ETH: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE (18 decimals)
+- WETH: 0x4200000000000000000000000000000000000006 (18 decimals)
+- USDC: 0x036CbD53842c5426634e7929541eC2318f3dCF7e (6 decimals)
+
+SEPOLIA (Ethereum Testnet - Chain ID: 11155111):
+- ETH: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE (18 decimals)
+- WETH: 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14 (18 decimals)
+- USDC: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238 (6 decimals)
+- DAI: 0xFF34B3d4Aee8ddCd6F9AFFFB6Fe49bD371b8a357 (18 decimals)
+
+BASE (Base Mainnet - Chain ID: 8453):
+- ETH: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE (18 decimals)
+- WETH: 0x4200000000000000000000000000000000000006 (18 decimals)
+- USDC: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913 (6 decimals)
+
+ETHEREUM (Ethereum Mainnet - Chain ID: 1):
+- ETH: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE (18 decimals)
+- WETH: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 (18 decimals)
+- USDC: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 (6 decimals)
+- USDT: 0xdAC17F958D2ee523a2206206994597C13D831ec7 (6 decimals)
+- DAI: 0x6B175474E89094C44Da98b954EedeAC495271d0F (18 decimals)
+
+ARBITRUM (Arbitrum One - Chain ID: 42161):
+- ETH: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE (18 decimals)
+- WETH: 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1 (18 decimals)
+- USDC: 0xaf88d065e77c8cC2239327C5EDb3A432268e5831 (6 decimals)
+
+OPTIMISM (Optimism - Chain ID: 10):
+- ETH: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE (18 decimals)
+- WETH: 0x4200000000000000000000000000000000000006 (18 decimals)
+- USDC: 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85 (6 decimals)
+
+POLYGON (Polygon - Chain ID: 137):
+- MATIC: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE (18 decimals)
+- WMATIC: 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270 (18 decimals)
+- USDC: 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359 (6 decimals)
+
+ARBITRUMSEPOLIA (Arbitrum Sepolia - Chain ID: 421614):
+- ETH: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE (18 decimals)
+- WETH: 0x980B62Da83eFf3D4576C647993b0c1D7faf17c73 (18 decimals)
+
+OPTIMISMSEPOLIA (Optimism Sepolia - Chain ID: 11155420):
+- ETH: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE (18 decimals)
+- WETH: 0x4200000000000000000000000000000000000006 (18 decimals)
+
+CHAIN NAME REFERENCE (use these EXACT names in "chain" field):
+Mainnets: ethereum, base, arbitrum, optimism, polygon, avalanche, bnb, celo
+Testnets: sepolia, basesepolia, arbitrumsepolia, optimismsepolia, avalanchefuji, polygonmumbai
 """
+        
+        # Add context data if available
+        if context and "token_addresses" in context and len(context["token_addresses"]) > 0:
+            token_mappings += "\n[Additional token addresses from context]:\n"
+            for chain, tokens in list(context["token_addresses"].items())[:3]:
+                token_mappings += f"\n{chain.upper()} (from RAG):\n"
+                for token in tokens[:3]:
+                    token_mappings += f"- {token['symbol']}: {token['address']}\n"
         
         prompt = f"""Create a DeFi workflow based on this request: "{user_query}"
 
@@ -184,16 +230,21 @@ FIELD NAMING REQUIREMENTS:
 - DO NOT use "tokenIn" or "tokenOut" - use "fromToken" and "toToken" instead
 - DO NOT use "recipient" - use "to" for transfer nodes
 
-CHAIN NAME PARSING:
-- "base sepolia", "basesepolia", "base-sepolia" → use "basesepolia"
-- "sepolia" alone → use "sepolia" (Ethereum testnet)
-- "base" alone → use "base" (Base mainnet)
-- When user says "on [chain]", extract the chain name and map it to the correct format
-- Default to "basesepolia" only if NO chain is specified
+CHAIN NAME PARSING RULES:
+1. User mentions "base sepolia", "basesepolia", "base-sepolia", "base testnet" → use "basesepolia"
+2. User mentions "sepolia" alone → use "sepolia" (Ethereum Sepolia testnet, NOT Base Sepolia)
+3. User mentions "base" alone, "base mainnet" → use "base"
+4. User mentions "ethereum", "eth mainnet" → use "ethereum"
+5. User mentions "arbitrum sepolia" → use "arbitrumsepolia"
+6. User mentions "optimism sepolia" → use "optimismsepolia"
+7. Parse chain BEFORE looking up token addresses
+8. Default to "basesepolia" ONLY if absolutely NO chain is mentioned
 
-SUPPORTED CHAIN NAMES (use exact strings, no hyphens or underscores):
-Mainnets: "ethereum", "polygon", "arbitrum", "optimism", "base", "bnb", "avalanche", "celo"
-Testnets: "sepolia", "basesepolia", "arbitrumsepolia", "optimismsepolia", "avalanchefuji", "polygonmumbai"
+SUPPORTED CHAIN NAMES (use these EXACT strings in "chain" field):
+Mainnets: ethereum, base, arbitrum, optimism, polygon, avalanche, bnb, celo
+Testnets: sepolia, basesepolia, arbitrumsepolia, optimismsepolia, avalanchefuji, polygonmumbai
+
+CRITICAL: "sepolia" and "basesepolia" are DIFFERENT chains with DIFFERENT token addresses!
 
 AMOUNT FIELD REQUIREMENTS:
 - If a node (swap, aave, transfer) comes AFTER another node that produces an output amount, leave the "amount" field as an empty string ""
@@ -208,12 +259,32 @@ AMOUNT FIELD REQUIREMENTS:
 
 TOKEN ADDRESS LOOKUP - CRITICAL:
 For each token symbol mentioned (ETH, USDC, USDT, WETH, DAI, etc.), you MUST:
-1. Identify the target chain from user query
-   - "base sepolia", "basesepolia", "base-sepolia" → use chain "basesepolia"
-   - "sepolia" alone → use chain "sepolia" (Ethereum testnet, different from Base Sepolia)
+1. Identify the target chain from user query FIRST
+   - "base sepolia", "basesepolia", "base-sepolia" → chain = "basesepolia"
+   - "sepolia" alone → chain = "sepolia" (Ethereum Sepolia, NOT Base Sepolia!)
+   - "base" alone → chain = "base" (mainnet)
 2. Look up the EXACT token address for that symbol on that SPECIFIC chain from TOKEN ADDRESS MAPPINGS above
-3. DO NOT mix addresses from different chains
+3. DO NOT mix addresses from different chains - each chain has different addresses!
 4. For transfer nodes after a swap: use the swap's toToken address as the transfer token address
+
+EXAMPLES OF CORRECT CHAIN & TOKEN MAPPING:
+
+Example 1 - Base Sepolia (CORRECT):
+User: "swap eth to usdc on base sepolia"
+Step 1: Parse chain → "base sepolia" → "basesepolia"
+Step 2: Look up ETH on basesepolia → 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
+Step 3: Look up USDC on basesepolia → 0x036CbD53842c5426634e7929541eC2318f3dCF7e
+Result: chain="basesepolia", fromToken=ETH address, toToken=USDC basesepolia address
+
+Example 2 - Sepolia (DIFFERENT FROM BASE SEPOLIA):
+User: "swap eth to usdc on sepolia"
+Step 1: Parse chain → "sepolia" → "sepolia"  
+Step 2: Look up USDC on sepolia → 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
+Result: chain="sepolia", toToken=USDC sepolia address (NOT basesepolia USDC!)
+
+COMMON MISTAKE TO AVOID:
+❌ WRONG: User says "base sepolia" but you use sepolia USDC address (0x1c7D...)
+✅ RIGHT: User says "base sepolia" so use basesepolia USDC address (0x036C...)
 
 SWAP + TRANSFER EXAMPLE:
 User: "swap 0.01 eth to usdc and then transfer it to 0x0fCe963885b15a12832813798980bDadc9744705 on base sepolia"
