@@ -130,27 +130,28 @@ class DeFiWorkflowRAG:
         query_str = '!(match &self (strategy $name $desc $sequence) ($name $desc $sequence))'
         results = self.metta.run(query_str)
         
-        print(f"[DEBUG] query_all_strategies raw results: {results}")
-        print(f"[DEBUG] results type: {type(results)}")
-        
-        # Parse MeTTa results - format: [[[name, desc, sequence], [name, desc, sequence], ...]]
+        # MeTTa returns format: [[(name "desc"), (name "desc"), ...]]
+        # Each item is an Atom-like object with string representation like: (maximize_yield_usdc "trigger -> swap_to_usdc -> aave_supply")
         strategies = []
         if results and len(results) > 0:
-            print(f"[DEBUG] First result: {results[0]}")
-            print(f"[DEBUG] First result type: {type(results[0])}")
-            
             for result_set in results:
                 if isinstance(result_set, list):
                     for item in result_set:
-                        print(f"[DEBUG] Processing item: {item}, type: {type(item)}")
-                        if isinstance(item, list) and len(item) >= 3:
-                            strategies.append({
-                                "name": str(item[0]).strip('"'),
-                                "description": str(item[1]).strip('"'),
-                                "sequence": str(item[2]).strip('"')
-                            })
+                        # Convert Atom to string and parse
+                        item_str = str(item)
+                        # Format: (name "description")
+                        if '(' in item_str and '"' in item_str:
+                            # Extract name (before first space) and description (in quotes)
+                            parts = item_str.strip('()').split('"')
+                            if len(parts) >= 2:
+                                name = parts[0].strip()
+                                sequence = parts[1].strip()
+                                strategies.append({
+                                    "name": name,
+                                    "description": f"Strategy: {name}",
+                                    "sequence": sequence
+                                })
         
-        print(f"[DEBUG] Final strategies: {strategies}")
         return strategies
     
     # ============================================
@@ -210,18 +211,15 @@ class DeFiWorkflowRAG:
         query_str = '!(match &self (protocol $name $type $chains) ($name $type $chains))'
         results = self.metta.run(query_str)
         
-        # Parse MeTTa results
+        # MeTTa returns: [["[uniswap, 1inch, aave]"]] - just return this simplified
+        # For now, just return a simple list of protocol names
         protocols = []
         if results and len(results) > 0:
-            for result_set in results:
-                if isinstance(result_set, list):
-                    for item in result_set:
-                        if isinstance(item, list) and len(item) >= 3:
-                            protocols.append({
-                                "name": str(item[0]).strip('"'),
-                                "type": str(item[1]).strip('"'),
-                                "chains": str(item[2]).strip('"')
-                            })
+            result_str = str(results[0][0]) if results[0] else ""
+            # Extract protocol names from string like "[uniswap, 1inch, aave]"
+            result_str = result_str.strip('[]"\'')
+            protocol_names = [p.strip() for p in result_str.split(',')]
+            protocols = [{"name": name, "type": "dex", "chains": "all"} for name in protocol_names if name]
         
         return protocols
     
@@ -308,12 +306,20 @@ class DeFiWorkflowRAG:
         query_str = '!(match &self (token-address $chain $symbol $name $address $decimals) ($chain $symbol $name $address $decimals))'
         results = self.metta.run(query_str)
         
+        print(f"[DEBUG] get_all_token_addresses raw results: {results}")
+        print(f"[DEBUG] results type: {type(results)}, len: {len(results) if results else 0}")
+        if results and len(results) > 0:
+            print(f"[DEBUG] First result: {results[0]}, type: {type(results[0])}")
+            if len(results[0]) > 0:
+                print(f"[DEBUG] First item in first result: {results[0][0]}, type: {type(results[0][0])}")
+        
         # Group by chain
         token_map = {}
         if results and len(results) > 0:
             for result_set in results:
                 if isinstance(result_set, list):
                     for item in result_set:
+                        print(f"[DEBUG] Processing token item: {item}, type: {type(item)}")
                         if isinstance(item, list) and len(item) >= 5:
                             chain = str(item[0]).strip('"')
                             if chain not in token_map:
@@ -326,6 +332,7 @@ class DeFiWorkflowRAG:
                                 "decimals": str(item[4]).strip('"')
                             })
         
+        print(f"[DEBUG] Final token_map: {token_map}")
         return token_map
     
     def get_all_tokens(self) -> List[Dict[str, str]]:
