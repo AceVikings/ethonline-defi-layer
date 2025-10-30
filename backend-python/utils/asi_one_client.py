@@ -3,12 +3,15 @@ ASI:One API Client
 
 This module provides integration with ASI:One for LLM-powered
 intent classification and natural language processing.
+
+Version: 2.0 (Enhanced prompts with chain parsing and token address mappings)
 """
 
 import os
 import requests
 from typing import Dict, Tuple, Any
 
+CLIENT_VERSION = "2.0"
 
 class ASIOneClient:
     """
@@ -343,9 +346,12 @@ Respond with ONLY valid JSON, no markdown code blocks, no explanations."""
 
         try:
             # Log the prompt for debugging
-            print(f"🔍 Generating workflow for query: {user_query}")
-            print(f"📊 Prompt length: {len(prompt)} characters")
-            print(f"🗺️  Chain context included: {'token_addresses' in context if context else 'No context'}")
+            print(f"🔍 [ASI Client v{CLIENT_VERSION}] Generating workflow for query: {user_query}")
+            print(f"📊 [ASI Client v{CLIENT_VERSION}] Prompt length: {len(prompt)} characters")
+            print(f"🗺️  [ASI Client v{CLIENT_VERSION}] Chain context included: {'token_addresses' in context if context else 'No context'}")
+            if context and 'token_addresses' in context:
+                chains = list(context['token_addresses'].keys())
+                print(f"🌐 [ASI Client v{CLIENT_VERSION}] Available chains: {', '.join(chains[:5])}")
             
             response = requests.post(
                 f"{self.base_url}/chat/completions",

@@ -3,6 +3,8 @@ Flask Server - Bridge between Python agents and Node.js backend
 
 This server provides REST API endpoints for the Node.js backend to
 interact with Python uAgents and MeTTa knowledge graph.
+
+Version: 2.0 (Port 8000, Token Addresses in MeTTa, Enhanced Prompts)
 """
 
 import os
@@ -25,6 +27,11 @@ import asyncio
 
 # Load environment variables
 load_dotenv()
+
+# Server version
+SERVER_VERSION = "2.0"
+print(f"🚀 DeFi Workflow Python Backend v{SERVER_VERSION} starting...")
+print(f"📍 Expected port: {os.getenv('FLASK_PORT', '8000')}")
 
 # Token address mappings for Base network
 TOKEN_ADDRESSES = {
@@ -134,7 +141,7 @@ def generate_workflow():
                 "error": "Query is required"
             }), 400
         
-        print(f"📝 Workflow generation request: '{user_query}'")
+        print(f"📝 [v{SERVER_VERSION}] Workflow generation request: '{user_query}'")
         
         # Step 1: Classify intent
         print("🔍 Classifying intent...")

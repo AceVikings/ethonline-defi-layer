@@ -12,6 +12,9 @@ import fetch from 'node-fetch';
 // Python backend URL
 const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || 'http://localhost:8080';
 
+// Log the backend URL on module load (v1.1 - port 8000 update)
+console.log(`[ASI Module v1.1] Loaded - Python Backend URL: ${PYTHON_BACKEND_URL}`);
+
 /**
  * Generate a workflow from natural language description
  * @param {string} query - User's natural language workflow description
@@ -21,6 +24,9 @@ const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || 'http://localhost:8
  */
 async function generateWorkflowFromNL(query, userAddress = '', options = {}) {
   try {
+    console.log(`[ASI Module v1.1] Calling Python backend at: ${PYTHON_BACKEND_URL}/api/workflow/generate`);
+    console.log(`[ASI Module v1.1] Query: "${query}"`);
+    
     const response = await fetch(`${PYTHON_BACKEND_URL}/api/workflow/generate`, {
       method: 'POST',
       headers: {
