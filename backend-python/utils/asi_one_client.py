@@ -175,13 +175,22 @@ FIELD NAMING REQUIREMENTS:
 - Swap nodes MUST use: "fromToken" (address), "toToken" (address), "fromTokenDecimals", "chain", "protocol", "amount", "slippage"
 - Aave nodes MUST use: "asset" (symbol like "USDC"), "amount", "action" (supply/borrow/withdraw/repay), "useAsCollateral", "chain"
 - Transfer nodes MUST use: "token" (address), "to" (address), "amount", "chain"
+  * CRITICAL: Transfer node "token" field MUST be the TOKEN ADDRESS being transferred (NOT the symbol)
+  * CRITICAL: Transfer node MUST include "chain" field with the same chain as previous nodes
+  * CRITICAL: Transfer node "to" field MUST be the recipient wallet address from user query
 - DO NOT use "tokenIn" or "tokenOut" - use "fromToken" and "toToken" instead
+- DO NOT use "recipient" - use "to" for transfer nodes
+
+CHAIN NAME PARSING:
+- "base sepolia", "basesepolia", "base-sepolia" → use "basesepolia"
+- "sepolia" alone → use "sepolia" (Ethereum testnet)
+- "base" alone → use "base" (Base mainnet)
+- When user says "on [chain]", extract the chain name and map it to the correct format
+- Default to "basesepolia" only if NO chain is specified
 
 SUPPORTED CHAIN NAMES (use exact strings, no hyphens or underscores):
 Mainnets: "ethereum", "polygon", "arbitrum", "optimism", "base", "bnb", "avalanche", "celo"
 Testnets: "sepolia", "basesepolia", "arbitrumsepolia", "optimismsepolia", "avalanchefuji", "polygonmumbai"
-- ALWAYS use lowercase, no hyphens (e.g., "basesepolia" NOT "base-sepolia")
-- Default to "basesepolia" for test transactions unless user specifies otherwise
 
 AMOUNT FIELD REQUIREMENTS:
 - If a node (swap, aave, transfer) comes AFTER another node that produces an output amount, leave the "amount" field as an empty string ""
@@ -189,10 +198,88 @@ AMOUNT FIELD REQUIREMENTS:
 - ONLY set a specific amount value if the user explicitly specifies an amount AND it's the first operation in the chain
 - Examples:
   * "swap 100 USDC to ETH then transfer to 0x123..." -> swap amount: "100", transfer amount: "" (inferred from swap output)
+  * "swap 0.01 ETH to USDC then transfer to 0x123..." -> swap amount: "0.01", transfer amount: "" (inferred from swap output)
   * "swap ETH to USDC then supply to Aave" -> swap amount: "", aave amount: "" (both inferred from user's wallet/previous outputs)
-  * "transfer all my USDC to 0x123..." -> transfer amount: "" (inferred from wallet balance)
 
 {token_mappings}
+
+TOKEN ADDRESS LOOKUP - CRITICAL:
+For each token symbol mentioned (ETH, USDC, USDT, WETH, DAI, etc.), you MUST:
+1. Identify the target chain from user query
+   - "base sepolia", "basesepolia", "base-sepolia" → use chain "basesepolia"
+   - "sepolia" alone → use chain "sepolia" (Ethereum testnet, different from Base Sepolia)
+2. Look up the EXACT token address for that symbol on that SPECIFIC chain from TOKEN ADDRESS MAPPINGS above
+3. DO NOT mix addresses from different chains
+4. For transfer nodes after a swap: use the swap's toToken address as the transfer token address
+
+SWAP + TRANSFER EXAMPLE:
+User: "swap 0.01 eth to usdc and then transfer it to 0x0fCe963885b15a12832813798980bDadc9744705 on base sepolia"
+Chain parsing: "base sepolia" → "basesepolia"
+Token lookup: USDC on basesepolia → 0x036CbD53842c5426634e7929541eC2318f3dCF7e (NOT sepolia USDC 0x94a9...)
+
+Correct output:
+{{
+  "nodes": [
+    {{
+      "id": "node-1",
+      "type": "trigger",
+      "data": {{
+        "label": "Trigger",
+        "config": {{"triggerType": "manual"}}
+      }},
+      "position": {{"x": 100, "y": 100}}
+    }},
+    {{
+      "id": "node-2",
+      "type": "swap",
+      "data": {{
+        "label": "Swap ETH to USDC",
+        "config": {{
+          "fromToken": "0x4200000000000000000000000000000000000006",
+          "toToken": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+          "fromTokenDecimals": "18",
+          "amount": "0.01",
+          "chain": "basesepolia",
+          "protocol": "uniswap",
+          "slippage": "1"
+        }}
+      }},
+      "position": {{"x": 300, "y": 100}}
+    }},
+    {{
+      "id": "node-3",
+      "type": "transfer",
+      "data": {{
+        "label": "Transfer USDC",
+        "config": {{
+          "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+          "to": "0x0fCe963885b15a12832813798980bDadc9744705",
+          "amount": "",
+          "chain": "basesepolia"
+        }}
+      }},
+      "position": {{"x": 500, "y": 100}}
+    }}
+  ],
+  "edges": [
+    {{
+      "id": "edge-1",
+      "source": "node-1",
+      "target": "node-2",
+      "sourceHandle": "output",
+      "targetHandle": "input"
+    }},
+    {{
+      "id": "edge-2",
+      "source": "node-2",
+      "target": "node-3",
+      "sourceHandle": "output",
+      "targetHandle": "input"
+    }}
+  ]
+}}
+
+REQUIRED WORKFLOW STRUCTURE:
 - USDT: 0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2
 - DAI: 0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb
 - WETH: 0x4200000000000000000000000000000000000006
