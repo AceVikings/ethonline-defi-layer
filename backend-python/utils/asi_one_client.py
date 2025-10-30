@@ -388,6 +388,8 @@ Output valid JSON only. Follow the examples EXACTLY."""},
             response.raise_for_status()
             result = response.json()
             
+            print(f"📦 [ASI Client v{CLIENT_VERSION}] Full API response: {result}", flush=True)
+            
             # ASI:One response format
             content = result['choices'][0]['message']['content']
             
@@ -415,8 +417,18 @@ Output valid JSON only. Follow the examples EXACTLY."""},
             
             return workflow_json
             
+        except json.JSONDecodeError as e:
+            print(f"❌ [ASI Client v{CLIENT_VERSION}] JSON decode error: {e}", flush=True)
+            print(f"   Content was: {content[:200] if 'content' in locals() else 'N/A'}", flush=True)
+            return self._fallback_workflow()
+        except KeyError as e:
+            print(f"❌ [ASI Client v{CLIENT_VERSION}] KeyError accessing response: {e}", flush=True)
+            print(f"   Result keys: {result.keys() if 'result' in locals() else 'N/A'}", flush=True)
+            return self._fallback_workflow()
         except Exception as e:
-            print(f"Error generating workflow: {e}")
+            print(f"❌ [ASI Client v{CLIENT_VERSION}] Error generating workflow: {e}", flush=True)
+            import traceback
+            print(f"   Traceback: {traceback.format_exc()}", flush=True)
             return self._fallback_workflow()
     
     def explain_workflow(self, workflow_json: Dict[str, Any]) -> str:
