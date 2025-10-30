@@ -371,6 +371,9 @@ def initialize_defi_knowledge(metta: MeTTa):
     print(f"[MeTTa] - {len(operations)} operations")
     print(f"[MeTTa] - {len(protocols)} protocols")
 
+
+if __name__ == "__main__":
+
 from hyperon import MeTTa, E, S, ValueAtom
 
 
