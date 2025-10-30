@@ -20,6 +20,8 @@ sys.path.append(str(Path(__file__).parent))
 
 # Import our modules
 from metta.knowledge import get_metta_instance
+import metta.knowledge as knowledge_module
+print(f"[SERVER] Knowledge module file: {knowledge_module.__file__}")
 from metta.defi_rag import DeFiWorkflowRAG
 from utils.asi_one_client import ASIOneClient
 from utils.mcp_client import MCPClientSync
