@@ -30,14 +30,14 @@ const ERC20_ABI = [
  * @returns {Promise<Object>} - { success: boolean, txHash?: string, error?: string }
  */
 export async function transferNativeToken({ chainName, recipient, amount, userPkpAddress }) {
-  const maxRetries = 2;
+  const maxRetries = 3;
   let lastError;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       if (attempt > 0) {
         console.log(`\n🔄 Retry attempt ${attempt}/${maxRetries} for native ETH transfer...`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay between retries
       }
 
       console.log('🔄 Transferring Native ETH...');
@@ -153,20 +153,25 @@ export async function transferNativeToken({ chainName, recipient, amount, userPk
       };
     } catch (error) {
       lastError = error;
+      console.error(`❌ Transfer Native ETH attempt ${attempt + 1}/${maxRetries + 1} failed:`, error.message);
       
-      // Check if it's a nonce error
+      // Check if it's a nonce error (retry immediately with fresh nonce)
       const isNonceError = error.code === 'NONCE_EXPIRED' || 
                           error.message?.includes('nonce too low') ||
                           error.message?.includes('nonce has already been used');
       
-      if (isNonceError && attempt < maxRetries) {
-        console.log(`   ⚠️  Nonce error on attempt ${attempt + 1}: ${error.message}`);
-        // Continue to next iteration to retry
+      if (isNonceError) {
+        console.log(`   ⚠️  Nonce error detected, will fetch fresh nonce on retry`);
+      }
+      
+      // Retry on any error if we have attempts left
+      if (attempt < maxRetries) {
+        console.log(`   🔄 Will retry (${maxRetries - attempt} retries remaining)...`);
         continue;
       }
       
-      // Not a nonce error or out of retries
-      console.error('❌ Transfer Native ETH failed:', error.message);
+      // Out of retries
+      console.error('❌ All retry attempts exhausted for native ETH transfer');
       return {
         success: false,
         error: error.message,
@@ -194,14 +199,14 @@ export async function transferNativeToken({ chainName, recipient, amount, userPk
  * @returns {Promise<Object>} - { success: boolean, txHash?: string, error?: string }
  */
 export async function transferERC20Token({ chainName, tokenAddress, recipient, amount, userPkpAddress }) {
-  const maxRetries = 2;
+  const maxRetries = 3;
   let lastError;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       if (attempt > 0) {
         console.log(`\n🔄 Retry attempt ${attempt}/${maxRetries} for ERC20 transfer...`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay between retries
       }
 
       console.log('🔄 Transferring ERC20 Token...');
@@ -355,20 +360,25 @@ export async function transferERC20Token({ chainName, tokenAddress, recipient, a
     };
     } catch (error) {
       lastError = error;
-      console.error('❌ Transfer ERC20 failed:', error.message);
+      console.error(`❌ Transfer ERC20 attempt ${attempt + 1}/${maxRetries + 1} failed:`, error.message);
 
-      // Check if this is a nonce error
+      // Check if this is a nonce error (retry immediately with fresh nonce)
       const isNonceError = error.code === 'NONCE_EXPIRED' || 
                           error.message?.includes('nonce too low') ||
                           error.message?.includes('nonce has already been used');
 
-      // If it's a nonce error and we have retries left, continue to next attempt
-      if (isNonceError && attempt < maxRetries) {
-        console.log(`   Nonce error detected, will retry with fresh nonce...`);
-        continue; // This will trigger the next iteration with a fresh nonce
+      if (isNonceError) {
+        console.log(`   ⚠️  Nonce error detected, will fetch fresh nonce on retry`);
       }
 
-      // If not a nonce error, or no retries left, return error
+      // Retry on any error if we have attempts left
+      if (attempt < maxRetries) {
+        console.log(`   🔄 Will retry (${maxRetries - attempt} retries remaining)...`);
+        continue;
+      }
+
+      // Out of retries
+      console.error('❌ All retry attempts exhausted for ERC20 transfer');
       return {
         success: false,
         error: error.message,
