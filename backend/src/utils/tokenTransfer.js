@@ -30,30 +30,40 @@ const ERC20_ABI = [
  * @returns {Promise<Object>} - { success: boolean, txHash?: string, error?: string }
  */
 export async function transferNativeToken({ chainName, recipient, amount, userPkpAddress }) {
-  try {
-    console.log('🔄 Transferring Native ETH...');
-    console.log(`   Chain: ${chainName}`);
-    console.log(`   From: ${userPkpAddress}`);
-    console.log(`   To: ${recipient}`);
-    console.log(`   Amount: ${amount} ETH`);
+  const maxRetries = 2;
+  let lastError;
 
-    // Validate recipient address
-    if (!ethers.utils.isAddress(recipient)) {
-      throw new Error(`Invalid recipient address: ${recipient}`);
-    }
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`\n🔄 Retry attempt ${attempt}/${maxRetries} for native ETH transfer...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
 
-    // Get chain configuration
-    const chain = getChainConfig(chainName);
-    const rpcUrl = chain.rpcUrl;
+      console.log('🔄 Transferring Native ETH...');
+      console.log(`   Chain: ${chainName}`);
+      console.log(`   From: ${userPkpAddress}`);
+      console.log(`   To: ${recipient}`);
+      console.log(`   Amount: ${amount} ETH`);
 
-    // Create provider for gas estimation
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+      // Validate recipient address
+      if (!ethers.utils.isAddress(recipient)) {
+        throw new Error(`Invalid recipient address: ${recipient}`);
+      }
 
-    // Parse amount to wei
-    const amountWei = ethers.utils.parseEther(amount);
+      // Get chain configuration
+      const chain = getChainConfig(chainName);
+      const rpcUrl = chain.rpcUrl;
 
-    // Get current nonce (use 'pending' to include pending transactions)
-    const nonce = await provider.getTransactionCount(userPkpAddress, 'pending');
+      // Create provider for gas estimation
+      const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+
+      // Parse amount to wei
+      const amountWei = ethers.utils.parseEther(amount);
+
+      // Get current nonce (use 'pending' to include pending transactions)
+      const nonce = await provider.getTransactionCount(userPkpAddress, 'pending');
+      console.log(`   Current nonce: ${nonce}`);
 
     // Estimate gas for simple ETH transfer
     const gasLimit = await provider.estimateGas({
@@ -133,21 +143,43 @@ export async function transferNativeToken({ chainName, recipient, amount, userPk
 
     console.log('✅ Native ETH transferred successfully!');
 
-    return {
-      success: true,
-      txHash: receipt.transactionHash,
-      amount: amount,
-      recipient: recipient,
-      blockNumber: receipt.blockNumber,
-      gasUsed: receipt.gasUsed.toString(),
-    };
-  } catch (error) {
-    console.error('❌ Transfer Native ETH failed:', error.message);
-    return {
-      success: false,
-      error: error.message,
-    };
+      return {
+        success: true,
+        txHash: receipt.transactionHash,
+        amount: amount,
+        recipient: recipient,
+        blockNumber: receipt.blockNumber,
+        gasUsed: receipt.gasUsed.toString(),
+      };
+    } catch (error) {
+      lastError = error;
+      
+      // Check if it's a nonce error
+      const isNonceError = error.code === 'NONCE_EXPIRED' || 
+                          error.message?.includes('nonce too low') ||
+                          error.message?.includes('nonce has already been used');
+      
+      if (isNonceError && attempt < maxRetries) {
+        console.log(`   ⚠️  Nonce error on attempt ${attempt + 1}: ${error.message}`);
+        // Continue to next iteration to retry
+        continue;
+      }
+      
+      // Not a nonce error or out of retries
+      console.error('❌ Transfer Native ETH failed:', error.message);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
   }
+
+  // If we get here, all retries failed
+  console.error('❌ Transfer Native ETH failed after all retries:', lastError.message);
+  return {
+    success: false,
+    error: lastError.message,
+  };
 }
 
 /**
@@ -162,10 +194,19 @@ export async function transferNativeToken({ chainName, recipient, amount, userPk
  * @returns {Promise<Object>} - { success: boolean, txHash?: string, error?: string }
  */
 export async function transferERC20Token({ chainName, tokenAddress, recipient, amount, userPkpAddress }) {
-  try {
-    console.log('🔄 Transferring ERC20 Token...');
-    console.log(`   Chain: ${chainName}`);
-    console.log(`   Token: ${tokenAddress}`);
+  const maxRetries = 2;
+  let lastError;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`\n🔄 Retry attempt ${attempt}/${maxRetries} for ERC20 transfer...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      console.log('🔄 Transferring ERC20 Token...');
+      console.log(`   Chain: ${chainName}`);
+      console.log(`   Token: ${tokenAddress}`);
     console.log(`   From: ${userPkpAddress}`);
     console.log(`   To: ${recipient}`);
     console.log(`   Amount: ${amount}`);
@@ -217,6 +258,7 @@ export async function transferERC20Token({ chainName, tokenAddress, recipient, a
 
     // Get current nonce (use 'pending' to include pending transactions)
     const nonce = await provider.getTransactionCount(userPkpAddress, 'pending');
+    console.log(`   Current nonce: ${nonce}`);
 
     // Estimate gas
     const gasLimit = await provider.estimateGas({
@@ -311,11 +353,32 @@ export async function transferERC20Token({ chainName, tokenAddress, recipient, a
       gasUsed: receipt.gasUsed.toString(),
       newBalance: newBalanceFormatted,
     };
-  } catch (error) {
-    console.error('❌ Transfer ERC20 failed:', error.message);
-    return {
-      success: false,
-      error: error.message,
-    };
+    } catch (error) {
+      lastError = error;
+      console.error('❌ Transfer ERC20 failed:', error.message);
+
+      // Check if this is a nonce error
+      const isNonceError = error.code === 'NONCE_EXPIRED' || 
+                          error.message?.includes('nonce too low') ||
+                          error.message?.includes('nonce has already been used');
+
+      // If it's a nonce error and we have retries left, continue to next attempt
+      if (isNonceError && attempt < maxRetries) {
+        console.log(`   Nonce error detected, will retry with fresh nonce...`);
+        continue; // This will trigger the next iteration with a fresh nonce
+      }
+
+      // If not a nonce error, or no retries left, return error
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
   }
+
+  // If all retries exhausted
+  return {
+    success: false,
+    error: lastError.message,
+  };
 }
