@@ -173,20 +173,33 @@ const TriggerConfig = ({
   onUpdate,
   workflowId,
   openTxToast,
+  executionState,
+  setExecutionState,
 }: {
   config: any;
   onUpdate: (config: any) => void;
   workflowId?: string;
   openTxToast: (chainId: string, txHash: string) => Promise<void>;
+  executionState: {
+    triggering: boolean;
+    executionId: string | null;
+    executionData: any;
+    showLogs: boolean;
+  };
+  setExecutionState: React.Dispatch<React.SetStateAction<{
+    triggering: boolean;
+    executionId: string | null;
+    executionData: any;
+    showLogs: boolean;
+  }>>;
 }) => {
-  const [triggering, setTriggering] = useState(false);
-  const [executionId, setExecutionId] = useState<string | null>(null);
-  const [executionData, setExecutionData] = useState<any>(null);
-  const [showLogs, setShowLogs] = useState(false);
   const triggerType = config.triggerType || "manual";
   const shownTxHashes = useRef<Set<string>>(new Set());
   const hasShownCompletion = useRef(false);
   const pollRef = useRef<number | null>(null);
+  
+  // Destructure execution state for easier access
+  const { triggering, executionId, executionData, showLogs } = executionState;
 
   // Poll for execution updates
   useEffect(() => {
@@ -199,14 +212,14 @@ const TriggerConfig = ({
     pollRef.current = window.setInterval(async () => {
       try {
         const response = await apiClient.getExecutionDetails(executionId);
-        setExecutionData(response.execution);
+        setExecutionState(prev => ({ ...prev, executionData: response.execution }));
 
         // Stop polling if execution is complete or failed
         if (
           response.execution.status === "completed" ||
           response.execution.status === "failed"
         ) {
-          setTriggering(false);
+          setExecutionState(prev => ({ ...prev, triggering: false }));
           if (pollRef.current) {
             clearInterval(pollRef.current);
             pollRef.current = null;
@@ -269,15 +282,18 @@ const TriggerConfig = ({
       return;
     }
 
-    setTriggering(true);
-    setShowLogs(true);
-    setExecutionData(null);
+    setExecutionState({
+      triggering: true,
+      executionId: null,
+      executionData: null,
+      showLogs: true,
+    });
     shownTxHashes.current.clear(); // Reset shown tx hashes for new execution
     hasShownCompletion.current = false; // Reset completion flag
 
     try {
       const response = await apiClient.executeWorkflow(workflowId);
-      setExecutionId(response.executionId);
+      setExecutionState(prev => ({ ...prev, executionId: response.executionId }));
       showToast.success("Workflow execution started!");
       console.log("Execution response:", response);
     } catch (error: any) {
@@ -293,7 +309,7 @@ const TriggerConfig = ({
       }
 
       console.error("Execution error:", error);
-      setTriggering(false);
+      setExecutionState(prev => ({ ...prev, triggering: false }));
     }
   };
 
@@ -494,7 +510,7 @@ const TriggerConfig = ({
                   </span>
                 </div>
                 <button
-                  onClick={() => setShowLogs(false)}
+                  onClick={() => setExecutionState(prev => ({ ...prev, showLogs: false }))}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <svg
@@ -1445,12 +1461,26 @@ const NodeConfigPanel = ({
   onUpdate,
   workflowId,
   openTxToast,
+  executionState,
+  setExecutionState,
 }: {
   nodeType: string;
   config: any;
   onUpdate: (config: any) => void;
   workflowId?: string;
   openTxToast: (chainId: string, txHash: string) => Promise<void>;
+  executionState: {
+    triggering: boolean;
+    executionId: string | null;
+    executionData: any;
+    showLogs: boolean;
+  };
+  setExecutionState: React.Dispatch<React.SetStateAction<{
+    triggering: boolean;
+    executionId: string | null;
+    executionData: any;
+    showLogs: boolean;
+  }>>;
 }) => {
   switch (nodeType) {
     case "trigger":
@@ -1460,6 +1490,8 @@ const NodeConfigPanel = ({
           onUpdate={onUpdate}
           workflowId={workflowId}
           openTxToast={openTxToast}
+          executionState={executionState}
+          setExecutionState={setExecutionState}
         />
       );
     case "swap":
@@ -1494,6 +1526,19 @@ export default function WorkflowBuilderPage() {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [showAIBuilder, setShowAIBuilder] = useState(false);
   const [showCreationModal, setShowCreationModal] = useState(false);
+  
+  // Lift execution state to parent level to persist across node selection changes
+  const [executionState, setExecutionState] = useState<{
+    triggering: boolean;
+    executionId: string | null;
+    executionData: any;
+    showLogs: boolean;
+  }>({
+    triggering: false,
+    executionId: null,
+    executionData: null,
+    showLogs: false,
+  });
 
   useEffect(() => {
     console.log(id);
@@ -2172,6 +2217,8 @@ export default function WorkflowBuilderPage() {
                     }
                     workflowId={id !== "new" ? id : undefined}
                     openTxToast={openTxToast}
+                    executionState={executionState}
+                    setExecutionState={setExecutionState}
                   />
                 </div>
 
