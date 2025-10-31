@@ -56,8 +56,8 @@ export async function wrapETH({ chainName, amount, userPkpAddress }) {
     // Encode deposit() function call
     const data = wethInterface.encodeFunctionData('deposit', []);
 
-    // Get current nonce
-    const nonce = await provider.getTransactionCount(userPkpAddress, 'latest');
+    // Get current nonce (use 'pending' to include pending transactions)
+    const nonce = await provider.getTransactionCount(userPkpAddress, 'pending');
 
     // Estimate gas
     const gasLimit = await provider.estimateGas({
@@ -202,8 +202,8 @@ export async function unwrapWETH({ chainName, amount, userPkpAddress }) {
     // Encode withdraw() function call
     const data = wethInterface.encodeFunctionData('withdraw', [amountWei]);
 
-    // Get current nonce
-    const nonce = await provider.getTransactionCount(userPkpAddress, 'latest');
+    // Get current nonce (use 'pending' to include pending transactions)
+    const nonce = await provider.getTransactionCount(userPkpAddress, 'pending');
 
     // Estimate gas
     const gasLimit = await provider.estimateGas({

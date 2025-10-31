@@ -52,8 +52,8 @@ export async function transferNativeToken({ chainName, recipient, amount, userPk
     // Parse amount to wei
     const amountWei = ethers.utils.parseEther(amount);
 
-    // Get current nonce
-    const nonce = await provider.getTransactionCount(userPkpAddress, 'latest');
+    // Get current nonce (use 'pending' to include pending transactions)
+    const nonce = await provider.getTransactionCount(userPkpAddress, 'pending');
 
     // Estimate gas for simple ETH transfer
     const gasLimit = await provider.estimateGas({
@@ -215,8 +215,8 @@ export async function transferERC20Token({ chainName, tokenAddress, recipient, a
     // Encode transfer function call
     const data = tokenInterface.encodeFunctionData('transfer', [recipient, amountWei]);
 
-    // Get current nonce
-    const nonce = await provider.getTransactionCount(userPkpAddress, 'latest');
+    // Get current nonce (use 'pending' to include pending transactions)
+    const nonce = await provider.getTransactionCount(userPkpAddress, 'pending');
 
     // Estimate gas
     const gasLimit = await provider.estimateGas({
