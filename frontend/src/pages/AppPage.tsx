@@ -80,9 +80,11 @@ const BLOCKSCOUT_CHAIN_IDS: Record<number, string> = {
 export default function AppPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  
+
   // State for selected chain for transaction viewing
-  const [selectedTxChainId, setSelectedTxChainId] = useState<number | null>(null);
+  const [selectedTxChainId, setSelectedTxChainId] = useState<number | null>(
+    null
+  );
   const { openPopup } = useTransactionPopup();
   // const { chainId } = useAccount();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
@@ -130,7 +132,7 @@ export default function AppPage() {
     }
   };
 
-    const handleViewTransactions = () => {
+  const handleViewTransactions = () => {
     // Validate user is logged in
     if (!user?.ethAddress) {
       showToast.error("Please connect your wallet");
@@ -548,7 +550,7 @@ export default function AppPage() {
               ) : (
                 <>
                   {/* Mainnets */}
-                  <div className="mb-4">
+                  {/* <div className="mb-4">
                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">
                       Mainnets
                     </h3>
@@ -599,7 +601,7 @@ export default function AppPage() {
                           </button>
                         ))}
                     </div>
-                  </div>
+                  </div> */}
 
                   {/* Testnets */}
                   <div>

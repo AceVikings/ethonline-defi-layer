@@ -710,7 +710,7 @@ const SwapConfig = ({
   config: any;
   onUpdate: (config: any) => void;
 }) => {
-  const chain = config.chain || "base";
+  const chain = config.chain || "basesepolia";
   const availableTokens = getTokensForChain(chain);
 
   // Track whether user is using custom address
@@ -778,24 +778,12 @@ const SwapConfig = ({
           onChange={(e) => handleChainChange(e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
         >
-          <optgroup label="Mainnets">
-            <option value="ethereum">Ethereum</option>
-            <option value="polygon">Polygon</option>
-            <option value="arbitrum">Arbitrum</option>
-            <option value="optimism">Optimism</option>
-            <option value="base">Base</option>
-            <option value="bnb">BNB Chain</option>
-            <option value="avalanche">Avalanche</option>
-            <option value="celo">Celo</option>
-          </optgroup>
-          <optgroup label="Testnets">
-            <option value="sepolia">Sepolia</option>
-            <option value="basesepolia">Base Sepolia</option>
-            <option value="arbitrumsepolia">Arbitrum Sepolia</option>
-            <option value="optimismsepolia">Optimism Sepolia</option>
-            <option value="avalanchefuji">Avalanche Fuji</option>
-            <option value="polygonmumbai">Polygon Mumbai</option>
-          </optgroup>
+          <option value="sepolia">Sepolia</option>
+          <option value="basesepolia">Base Sepolia</option>
+          <option value="arbitrumsepolia">Arbitrum Sepolia</option>
+          <option value="optimismsepolia">Optimism Sepolia</option>
+          <option value="avalanchefuji">Avalanche Fuji</option>
+          <option value="polygonmumbai">Polygon Mumbai</option>
         </select>
       </div>
 
@@ -958,7 +946,7 @@ const AaveConfig = ({
   onUpdate: (config: any) => void;
 }) => {
   const action = config.action || "supply";
-  const chain = config.chain || "base";
+  const chain = config.chain || "basesepolia";
 
   // Common Aave tokens per chain
   const aaveTokens: Record<string, string[]> = {
@@ -988,23 +976,12 @@ const AaveConfig = ({
           onChange={(e) => onUpdate({ ...config, chain: e.target.value, asset: "" })}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-orange-500 focus:outline-none"
         >
-          <optgroup label="Mainnets">
-            <option value="ethereum">Ethereum</option>
-            <option value="polygon">Polygon</option>
-            <option value="arbitrum">Arbitrum</option>
-            <option value="optimism">Optimism</option>
-            <option value="base">Base</option>
-            <option value="bnb">BNB Chain</option>
-            <option value="avalanche">Avalanche</option>
-          </optgroup>
-          <optgroup label="Testnets">
-            <option value="sepolia">Sepolia</option>
-            <option value="basesepolia">Base Sepolia</option>
-            <option value="arbitrumsepolia">Arbitrum Sepolia</option>
-            <option value="optimismsepolia">Optimism Sepolia</option>
-            <option value="avalanchefuji">Avalanche Fuji</option>
-            <option value="polygonmumbai">Polygon Mumbai</option>
-          </optgroup>
+          <option value="sepolia">Sepolia</option>
+          <option value="basesepolia">Base Sepolia</option>
+          <option value="arbitrumsepolia">Arbitrum Sepolia</option>
+          <option value="optimismsepolia">Optimism Sepolia</option>
+          <option value="avalanchefuji">Avalanche Fuji</option>
+          <option value="polygonmumbai">Polygon Mumbai</option>
         </select>
       </div>
 

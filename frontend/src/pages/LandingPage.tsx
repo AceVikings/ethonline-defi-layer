@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { redirectToVincentConnect } from "../lib/vincentAuth";
 import { useAuth } from "../contexts/AuthContext";
+import { motion } from "framer-motion";
 
 export default function LandingPage() {
   const { isAuthenticated } = useAuth();
@@ -53,17 +54,22 @@ export default function LandingPage() {
             >
               How It Works
             </a>
-            <Link
-              to="/app"
-              className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-bold hover:shadow-lg transition shadow-md border border-orange-600/20"
+            <button
+              onClick={redirectToVincentConnect}
+              className="px-6 py-2.5 bg-linear-to-r cursor-pointer from-orange-500 to-amber-600 text-white rounded-lg font-bold hover:shadow-lg transition shadow-md border border-orange-600/20"
             >
               Launch App →
-            </Link>
+            </button>
           </div>
         </nav>
 
         <div className="max-w-5xl mx-auto text-center mt-28">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-orange-100 border border-orange-200 rounded-full mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-orange-100 border border-orange-200 rounded-full mb-8"
+          >
             <svg
               className="w-4 h-4 text-orange-600 animate-spin"
               style={{ animationDuration: "3s" }}
@@ -81,8 +87,11 @@ export default function LandingPage() {
             <span className="text-sm font-bold text-orange-800 uppercase tracking-wider">
               Autonomous DeFi Automation
             </span>
-          </div>
-          <h1
+          </motion.div>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
             className="text-7xl font-black mb-6 text-slate-900 leading-[1.1] tracking-tight"
             style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
           >
@@ -91,13 +100,23 @@ export default function LandingPage() {
             <span className="bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700 bg-clip-text text-transparent">
               Like Clockwork
             </span>
-          </h1>
-          <p className="text-xl text-slate-600 mb-12 max-w-3xl mx-auto leading-relaxed font-medium">
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-xl text-slate-600 mb-12 max-w-3xl mx-auto leading-relaxed font-medium"
+          >
             Build automated strategies with precision-engineered nodes. Connect,
             simulate, execute. Powered by Lit Protocol, optimized by AI, built
             for reliability.
-          </p>
-          <div className="flex gap-4 justify-center">
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="flex gap-4 justify-center"
+          >
             {isAuthenticated ? (
               <Link
                 to="/app"
@@ -121,9 +140,9 @@ export default function LandingPage() {
             ) : (
               <button
                 onClick={redirectToVincentConnect}
-                className="px-8 py-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg font-bold text-lg hover:shadow-xl transition shadow-lg border border-orange-600/20 inline-flex items-center gap-2"
+                className="px-8 py-4 cursor-pointer bg-linear-to-r from-orange-500 to-amber-600 text-white rounded-lg font-bold text-lg hover:shadow-xl transition shadow-lg border border-orange-600/20 inline-flex items-center gap-2"
               >
-                <span>Connect with Vincent</span>
+                <span>Get Started</span>
                 <svg
                   className="w-5 h-5"
                   fill="none"
@@ -158,7 +177,7 @@ export default function LandingPage() {
                 />
               </svg>
             </a>
-          </div>
+          </motion.div>
         </div>
 
         {/* Feature Cards */}
@@ -166,7 +185,13 @@ export default function LandingPage() {
           id="features"
           className="grid md:grid-cols-3 gap-6 mt-32 max-w-6xl mx-auto"
         >
-          <div className="p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-400 hover:shadow-xl transition group">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-400 hover:shadow-xl transition group"
+          >
             <div className="w-14 h-14 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200 group-hover:scale-110 transition">
               <svg
                 className="w-7 h-7 text-orange-600"
@@ -189,9 +214,15 @@ export default function LandingPage() {
               Snap together precision-built modules. Swap, lend, transfer—each
               node engineered for reliability.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-400 hover:shadow-xl transition group">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-400 hover:shadow-xl transition group"
+          >
             <div className="w-14 h-14 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200 group-hover:scale-110 transition">
               <svg
                 className="w-7 h-7 text-orange-600"
@@ -214,9 +245,15 @@ export default function LandingPage() {
               PKP-powered execution. Zero custody, total control. Your keys,
               your automation.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-400 hover:shadow-xl transition group">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-400 hover:shadow-xl transition group"
+          >
             <div className="w-14 h-14 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200 group-hover:scale-110 transition">
               <svg
                 className="w-7 h-7 text-orange-600"
@@ -239,24 +276,49 @@ export default function LandingPage() {
               Real-time market intelligence. Automated crash detection.
               Strategies that adapt.
             </p>
-          </div>
+          </motion.div>
         </div>
 
         {/* How It Works */}
-        <div id="how-it-works" className="mt-32 max-w-5xl mx-auto">
+        <motion.div
+          id="how-it-works"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="mt-32 max-w-5xl mx-auto"
+        >
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-orange-100 border border-orange-200 rounded-full mb-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-orange-100 border border-orange-200 rounded-full mb-4"
+            >
               <span className="text-xs font-black text-orange-800 uppercase tracking-widest">
                 The Process
               </span>
-            </div>
-            <h2 className="text-5xl font-black text-slate-900 tracking-tight">
+            </motion.div>
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="text-5xl font-black text-slate-900 tracking-tight"
+            >
               Precision Engineering
-            </h2>
+            </motion.h2>
           </div>
           <div className="grid md:grid-cols-2 gap-8">
-            <div className="relative p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-300 transition group">
-              <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg border-2 border-white">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="relative p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-300 transition group"
+            >
+              <div className="absolute -top-4 -left-4 w-12 h-12 bg-linear-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg border-2 border-white">
                 1
               </div>
               <h3 className="text-2xl font-black text-slate-900 mb-3 mt-2 tracking-tight">
@@ -266,9 +328,15 @@ export default function LandingPage() {
                 Drag, drop, connect. Assemble your automation workflow with
                 precision-tooled nodes. Visual, intuitive, powerful.
               </p>
-            </div>
+            </motion.div>
 
-            <div className="relative p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-300 transition group">
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="relative p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-300 transition group"
+            >
               <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg border-2 border-white">
                 2
               </div>
@@ -279,9 +347,15 @@ export default function LandingPage() {
                 Test-drive before deployment. Dry-run simulation checks every
                 detail—gas, approvals, outcomes.
               </p>
-            </div>
+            </motion.div>
 
-            <div className="relative p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-300 transition group">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="relative p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-300 transition group"
+            >
               <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg border-2 border-white">
                 3
               </div>
@@ -292,9 +366,15 @@ export default function LandingPage() {
                 PKP-powered trustless execution. Sign once, automate forever.
                 Every transaction logged, auditable, yours.
               </p>
-            </div>
+            </motion.div>
 
-            <div className="relative p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-300 transition group">
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="relative p-8 bg-white border-2 border-slate-200 rounded-xl hover:border-orange-300 transition group"
+            >
               <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg border-2 border-white">
                 4
               </div>
@@ -305,12 +385,18 @@ export default function LandingPage() {
                 AI agents watch the markets 24/7. Crash protection, re-entry
                 signals, adaptive strategies on autopilot.
               </p>
-            </div>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
 
         {/* CTA Section */}
-        <div className="mt-32 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="mt-32 text-center"
+        >
           <div className="relative max-w-4xl mx-auto p-12 bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 border-2 border-orange-200 rounded-2xl overflow-hidden">
             <div className="absolute top-4 right-4 w-32 h-32 bg-orange-200/30 rounded-full blur-3xl"></div>
             <div className="absolute bottom-4 left-4 w-40 h-40 bg-amber-200/30 rounded-full blur-3xl"></div>
@@ -335,9 +421,9 @@ export default function LandingPage() {
               <p className="text-lg text-slate-700 mb-8 font-medium max-w-2xl mx-auto">
                 Join the automation revolution. Build once, execute forever.
               </p>
-              <Link
-                to="/app"
-                className="inline-flex items-center gap-3 px-10 py-5 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-black text-xl hover:shadow-2xl transition shadow-xl border-2 border-orange-600/20"
+              <button
+                onClick={redirectToVincentConnect}
+                className="inline-flex cursor-pointer items-center gap-3 px-10 py-5 bg-linear-to-r from-orange-500 to-amber-600 text-white rounded-xl font-black text-xl hover:shadow-2xl transition shadow-xl border-2 border-orange-600/20"
               >
                 <span>Launch DeFlow</span>
                 <svg
@@ -353,59 +439,17 @@ export default function LandingPage() {
                     d="M13 7l5 5m0 0l-5 5m5-5H6"
                   />
                 </svg>
-              </Link>
+              </button>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Footer */}
         <footer className="mt-32 pt-12 border-t-2 border-slate-200">
-          <div className="flex justify-between items-center mb-8">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg flex items-center justify-center shadow-sm">
-                <svg
-                  className="w-5 h-5 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                  />
-                </svg>
-              </div>
-              <span className="font-black text-slate-900">DeFlow</span>
-            </div>
-            {/* <div className="flex gap-8">
-              <a
-                href="#"
-                className="text-slate-600 hover:text-orange-600 transition font-bold"
-              >
-                Docs
-              </a>
-              <a
-                href="#"
-                className="text-slate-600 hover:text-orange-600 transition font-bold"
-              >
-                GitHub
-              </a>
-              <a
-                href="#"
-                className="text-slate-600 hover:text-orange-600 transition font-bold"
-              >
-                Discord
-              </a>
-            </div> */}
-          </div>
-          <div className="pt-8 border-t border-slate-200">
+          <div className="">
             <p className="text-center text-slate-500 font-medium text-sm">
               Powered by{" "}
-              <span className="font-bold text-slate-700">Lit Protocol</span> ·{" "}
-              <span className="font-bold text-slate-700">ASI Alliance</span> ·{" "}
-              <span className="font-bold text-slate-700">Avail</span>
+              <span className="font-bold text-slate-700">Lit Protocol</span>
             </p>
             <p className="text-center text-slate-400 text-sm mt-3">
               Winner ETHOnline (Work in Progress)
